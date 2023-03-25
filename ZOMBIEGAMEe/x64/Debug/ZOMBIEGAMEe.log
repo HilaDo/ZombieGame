@@ -1,2 +1,38 @@
 ﻿  Source.cpp
-  ZOMBIEGAMEe.vcxproj -> C:\C++ programs\ZOMBIEGAMEe\x64\Debug\ZOMBIEGAMEe.exe
+C:\C++ programs\ZOMBIEGAMEe\ZombieGame\ZOMBIEGAMEe\Source.cpp(28,76): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+          with
+          [
+              T=unsigned int
+          ]
+          and
+          [
+              T=float
+          ]
+C:\C++ programs\ZOMBIEGAMEe\ZombieGame\ZOMBIEGAMEe\Source.cpp(28,52): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+          with
+          [
+              T=unsigned int
+          ]
+          and
+          [
+              T=float
+          ]
+C:\C++ programs\ZOMBIEGAMEe\ZombieGame\ZOMBIEGAMEe\Source.cpp(32,76): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+          with
+          [
+              T=unsigned int
+          ]
+          and
+          [
+              T=float
+          ]
+C:\C++ programs\ZOMBIEGAMEe\ZombieGame\ZOMBIEGAMEe\Source.cpp(32,56): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+          with
+          [
+              T=unsigned int
+          ]
+          and
+          [
+              T=float
+          ]
+  ZOMBIEGAMEe.vcxproj -> C:\C++ programs\ZOMBIEGAMEe\ZombieGame\x64\Debug\ZOMBIEGAMEe.exe
