@@ -1,6 +1,9 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <vector>
+#include <sstream>
+#include <string>
+
 #define num_walls_lv1 4
 #define pi 3.14159265
 
@@ -19,16 +22,16 @@
 #define shotgunspread 1
 #define shotgunbulletpershot 10
 
+#define sniperfirerate 3
+#define sniperdamage 10
+#define sniperspread 0
+#define sniperbulletpershot 1
+
 using namespace sf;
 
 enum state
 {
-    dashing, dash_cooldown, normal
-};
-struct Walls
-{
-    Vector2f scale;
-    Color color;
+    idle,walk,dashing,hit,death
 };
 struct bullet
 {
@@ -38,8 +41,8 @@ struct bullet
     float damage;
 };
 
-void Update(float dt,state& curr_state);
-void Draw(state& curr_state);
+void Update(float dt);
+void Draw();
 void draw_dash_line();
 void AddDashLineVertexes();
 void calculate_shoot_dir();
@@ -48,11 +51,16 @@ void init_walls();
 void Player_Movement(float dt);
 void Shooting();
 void Bullet_Movement_Collision(float dt);
-void Dashing(state& curr_state, float dt);
+void Dashing(float dt);
 void Player_Collision();
+void UpdateAnimationCounter(float dt,int maxanimationcounter);
+void InitTextures();
+void switch_player_states(state& curr_state,float dt);
 
+bool isdashing = false;
+bool dashready = true;
 
-RectangleShape Player(Vector2f(50.f,50.f));
+Sprite Player;
 RectangleShape Gun(Vector2f(35.f, 10.f));
 RenderWindow window(VideoMode(1920, 1080), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
@@ -60,14 +68,22 @@ RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
 RectangleShape wall4(Vector2f(10000.0, 50.0));
 
+Texture WalkAnimation[8];
+Texture IdleAnimation[6];
+Texture HitAnimation[3];
+Texture RollAnimation[5];
+Texture DeathAnimation[10];
+
 std::vector <FloatRect> Wall_Bounds;
-Walls walls[num_walls_lv1];
 
 float x, y,playerspeed = 500.0;
 float maxcooldown = 10;
 float timesincedash = 0;
 float fire_rate_counter;
+float AnimationCounter = 0;
+float AnimationSwitchTime = 0.1f;
 
+int ImageCounter = 0;
 
 float current_fire_rate = pistolfirerate;
 float current_damage = pistoldamage;
@@ -87,10 +103,11 @@ std::vector<bullet> bullets;
 int main()
 {
     init_walls();
+    InitTextures();
     Gun.setFillColor(Color::Green);
-    state state = state::normal;
-    Player.setFillColor(Color::Red);
     Player.setPosition(Vector2f(50,0));
+    Player.setScale(1, 1);
+    state current_state_of_player = state::idle;
     Clock clock;
     Event event;
     View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
@@ -105,18 +122,20 @@ int main()
         }
         view.setCenter(Player.getPosition());
         window.setView(view);
-        Update(elapsed,state);
-        Draw(state);
+        Update(elapsed);
+        switch_player_states(current_state_of_player,elapsed);
+        Draw();
     }
 
     return 0;
 }
-void Update(float dt,state &curr_state)
+void Update(float dt)
 {
     fire_rate_counter += dt;
     current_player_pos = Player.getPosition();
     MousePos = Vector2f(Mouse::getPosition(window));
     Gun.setPosition(current_player_pos.x + 25.f, current_player_pos.y + 25.f);
+
     calculate_shoot_dir();
     select_guns();
     // movement
@@ -125,11 +144,34 @@ void Update(float dt,state &curr_state)
     Shooting();
     Bullet_Movement_Collision(dt);
     //dashing
-    Dashing(curr_state, dt);
+    Dashing(dt);
     previous_player_pos = current_player_pos;
 
     //check collision
     Player_Collision();
+}
+void switch_player_states(state& curr_state,float dt)
+{
+    if (x == 1 || x == -1 || y == 1 || y == -1)
+    {
+        curr_state = state::walk;
+    }
+    else
+    {
+        curr_state = state::idle;
+    }
+    if (isdashing)
+    {
+        curr_state = state::dashing;
+    }
+    switch (curr_state)
+    {
+    case state::idle: Player.setTexture(IdleAnimation[ImageCounter]); UpdateAnimationCounter(dt, sizeof(IdleAnimation) / sizeof(int) / 10); break;
+    case state::walk: Player.setTexture(WalkAnimation[ImageCounter]);  UpdateAnimationCounter(dt, sizeof(WalkAnimation) / sizeof(int) / 10); break;
+    case state::dashing: Player.setTexture(RollAnimation[ImageCounter]);  UpdateAnimationCounter(dt, sizeof(RollAnimation) / sizeof(int) / 10); break;
+    case state::hit:break;
+    case state::death:break;
+    }
 }
 void Player_Collision()
 {
@@ -142,7 +184,6 @@ void Player_Collision()
         {
 
             Player_Bounds.intersects(Wall_bound, intersection);
-            std::cout << intersection.height << std::endl;
             if (intersection.width < intersection.height)
             {
                 if (Player_Bounds.left < Wall_bound.left)
@@ -168,29 +209,66 @@ void Player_Collision()
         }
     }
 }
-void Dashing(state& curr_state,float dt)
+void InitTextures()
 {
-    if (Keyboard::isKeyPressed(Keyboard::LShift))
+    for (int i = 0; i < sizeof(WalkAnimation) / sizeof(int)/10; i++)
     {
-        curr_state = state::dashing;
+        WalkAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/Walk - Copy (2)/walk_" +std::to_string(i)+ ".png");
+    }
+    for (int i = 0; i < sizeof(IdleAnimation) / sizeof(int) / 10; i++)
+    {
+        IdleAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/Idle/idle_" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < sizeof(RollAnimation) / sizeof(int) / 10; i++)
+    {
+        RollAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/Roll/roll_" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < sizeof(HitAnimation) / sizeof(int) / 10; i++)
+    {
+        HitAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/Hit/hit_" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < sizeof(DeathAnimation) / sizeof(int) / 10; i++)
+    {
+        DeathAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 2/with hands/Death/death_" + std::to_string(i) + ".png");
+    }
+}
+void UpdateAnimationCounter(float dt,int maximagecounter)
+{
+    AnimationCounter += dt;
+    if (AnimationCounter >= AnimationSwitchTime)
+    {
+        AnimationCounter -= AnimationSwitchTime;
+        ImageCounter++;
+        if (ImageCounter >= maximagecounter)
+        {
+            ImageCounter = 0;
+        }
+    }
+}
+void Dashing(float dt)
+{
+    if (Keyboard::isKeyPressed(Keyboard::LShift) && dashready)
+    {
+        isdashing = true;
+        dashready = false;
         playerspeed = 4000.0f;
     }
-    if (curr_state == state::dashing)
+    if (isdashing && !dashready)
     {
         timesincedash += dt;
 
         if (timesincedash > 0.05f)
         {
-            curr_state = state::dash_cooldown;
+            isdashing = false;
             playerspeed = 500;
         }
     }
-    if (curr_state == state::dash_cooldown)
+    if (!isdashing && !dashready)
     {
         timesincedash += dt;
         if (timesincedash > 3.0)
         {
-            curr_state = state::normal;
+            dashready = true;
             timesincedash = 0;
         }
     }
@@ -290,6 +368,13 @@ void select_guns()
         current_bullets_per_shot = shotgunbulletpershot;
         current_spread = shotgunspread;
     }
+    if (Keyboard::isKeyPressed(Keyboard::Num4))
+    {
+        current_fire_rate = sniperfirerate;
+        current_damage = sniperdamage;
+        current_bullets_per_shot = sniperbulletpershot;
+        current_spread = sniperspread;
+    }
 }
 void calculate_shoot_dir()
 {
@@ -321,7 +406,7 @@ void AddDashLineVertexes()
     dasheline.append(Vector2f(previous_player_pos.x + playerbounds.width - 10.0f, previous_player_pos.y + playerbounds.height - 10.0f));
     dasheline.append(Vector2f(previous_player_pos.x + playerbounds.width - 10.0f, previous_player_pos.y + 10.0f));
 }
-void Draw(state& curr_state)
+void Draw()
 {
     window.clear(Color::White);
     window.draw(Player);
@@ -334,7 +419,7 @@ void Draw(state& curr_state)
     window.draw(wall2);
     window.draw(wall3);
     window.draw(wall4);
-    if (curr_state == state :: dashing)
+    if (isdashing)
     {
         draw_dash_line();
     }
