@@ -10,16 +10,28 @@
 #define pistoldamage 5
 #define pistolspread 0
 #define pistolbulletpershot 1
+#define pistolclipsize 9;
+#define pistolreloadtime 1;
+int pistolammostock = 240;
+int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.1f
 #define rifledamage 3
 #define riflespread 0
 #define riflebulletpershot 1
+#define rifleclipsize 30;
+#define riflereloadtime 1;
+int rifleammostock = 90;
+int riflebulletsloaded = rifleclipsize;
 
 #define shotgunfirerate 2
 #define shotgundamage 1
 #define shotgunspread 1
 #define shotgunbulletpershot 10
+#define shotgunclipsize 8
+#define shotgunreloadtime 1;
+int shotgunammostock = 24;
+int shotgunbulletsloaded = shotgunclipsize;
 
 using namespace sf;
 
@@ -48,7 +60,7 @@ void calculate_shoot_dir();
 void select_guns();
 void init_walls();
 void Player_Movement(float dt);
-void Shooting();
+void Shooting(float dt);
 void Bullet_Movement_Collision(float dt);
 void Dashing(float dt);
 void Player_Collision();
@@ -63,7 +75,7 @@ Sprite Pistol_S;
 Sprite SMG_S;
 Sprite ShotGun_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(1920, 1080), "ZombieGame");
+RenderWindow window(VideoMode(800, 600), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
 RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
@@ -71,6 +83,7 @@ RectangleShape wall4(Vector2f(10000.0, 50.0));
 
 bool isdashing = false;
 bool dashready = true;
+bool isreloading = false;
 
 std::vector <FloatRect> Wall_Bounds;
 
@@ -86,8 +99,13 @@ float timesincedash = 0;
 float fire_rate_counter;
 float AnimationCounter = 0;
 float AnimationSwitchTime = 0.2f;
+float current_reload_time;
+float reload_time_counter = 0;
 
-int ImageCounter = 0; 
+int ImageCounter = 0;
+int current_ammo;
+int current_ammo_stock;
+int current_clip_size;
 
 float current_fire_rate = pistolfirerate;
 float current_damage = pistoldamage;
@@ -147,7 +165,7 @@ void Update(float dt, state& curr_state)
     // movement
     Player_Movement(dt);
     // shooting
-    Shooting();
+    Shooting(dt);
     Bullet_Movement_Collision(dt);
     //dashing
     Dashing(dt);
@@ -176,17 +194,17 @@ void GetTextures()
 {
     for (int i = 0; i < 8; i++)
     {
-        WalkAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/Walk/walk_"+ std::to_string(i)+".png");
+        WalkAnimation[i].loadFromFile("Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/Walk/walk_"+ std::to_string(i)+".png");
     }
     for (int i = 0; i < 5; i++)
     {
-        IdleAnimation[i].loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/Idle/idle_" + std::to_string(i) + ".png");
+        IdleAnimation[i].loadFromFile("Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/Idle/idle_" + std::to_string(i) + ".png");
     }
-    ShotGun_T.loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/shotgun.png"); 
+    ShotGun_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/shotgun.png"); 
     ShotGun_S.setTexture(ShotGun_T);
-    SMG_T.loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/assaultrifle.png");
+    SMG_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/assaultrifle.png");
     SMG_S.setTexture(SMG_T);
-    Pistol_T.loadFromFile("E:/Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/pistol.png");
+    Pistol_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/pistol.png");
     Pistol_S.setTexture(Pistol_T);    
 }
 void UpdateAnimationCounter(float dt,int maximagecounter)
@@ -285,9 +303,9 @@ void Bullet_Movement_Collision(float dt)
         }
     }
 }
-void Shooting()
+void Shooting(float dt)
 {
-    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate)
+    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && current_ammo > 0 )
     {
         for (int i = 0; i < current_bullets_per_shot; i++)
         {
@@ -308,8 +326,35 @@ void Shooting()
             newbullet.damage = current_damage;
             bullets.push_back(newbullet);
         }
+        current_ammo--;
         fire_rate_counter = 0;
     }
+    if (((current_ammo <= 0 || Keyboard::isKeyPressed(Keyboard::R)) && current_ammo_stock >= 0) || isreloading)
+    {
+        if (!isreloading)
+        {
+            current_ammo_stock += current_ammo;
+            current_ammo = 0;
+        }
+        isreloading = true;
+        reload_time_counter += dt;
+        if (reload_time_counter > current_reload_time)
+        {
+            if (current_ammo_stock <= current_clip_size)
+            {
+                current_ammo = current_ammo_stock;
+                current_ammo_stock = 0;
+            }
+            else
+            {
+                current_ammo += current_clip_size;
+                current_ammo_stock -= current_clip_size;
+            }
+            reload_time_counter = 0;
+            isreloading = false;
+        }
+    }
+    std::cout << current_ammo << " " << current_ammo_stock << " " << current_clip_size << std::endl;
 }
 void Player_Movement(float dt)
 {
@@ -364,6 +409,10 @@ void select_guns()
         current_damage = pistoldamage;
         current_bullets_per_shot = pistolbulletpershot;
         current_spread = pistolspread;
+        current_ammo = pistolbulletsloaded;
+        current_ammo_stock = pistolammostock;
+        current_clip_size = pistolclipsize;
+        current_reload_time = pistolreloadtime;
         Curr_Gun_state = Gun_State::Pistol;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num2))
@@ -372,6 +421,10 @@ void select_guns()
         current_damage = rifledamage;
         current_bullets_per_shot = riflebulletpershot;
         current_spread = riflespread;
+        current_ammo = riflebulletsloaded;
+        current_ammo_stock = rifleammostock;
+        current_clip_size = rifleclipsize;
+        current_reload_time = riflereloadtime;
         Curr_Gun_state = Gun_State::Smg;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num3))
@@ -380,6 +433,10 @@ void select_guns()
         current_damage = shotgundamage;
         current_bullets_per_shot = shotgunbulletpershot;
         current_spread = shotgunspread;
+        current_ammo = shotgunbulletsloaded;
+        current_ammo_stock = shotgunammostock;
+        current_clip_size = shotgunclipsize;
+        current_reload_time = shotgunreloadtime;
         Curr_Gun_state = Gun_State::Shotgun;
     }
 }
