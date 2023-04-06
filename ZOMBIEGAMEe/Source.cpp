@@ -3,6 +3,15 @@
 #include <vector>
 #include <sstream>
 #include <string>
+
+
+//to be displayed on ui
+int Player_Health;
+int Score;
+int Wave_Number;
+int Money;
+
+
 #define num_walls_lv1 4
 #define pi 3.14159265
 
@@ -52,23 +61,25 @@ struct bullet
     float damage;
 };
 
-void Update(float dt, state& curr_state);
-void Draw();
-void draw_dash_line();
-void AddDashLineVertexes();
-void calculate_shoot_dir();
-void select_guns();
-void init_walls();
-void Player_Movement(float dt);
-void Shooting(float dt);
-void Bullet_Movement_Collision(float dt);
-void Dashing(float dt);
-void Player_Collision();
-void GetTextures();
-void UpdateAnimationCounter(float dt, int maximagecounter);
-void Switch_States(state& curr_state, float dt);
+void Update(float dt, state& curr_state); // the main update function where all game logic updates every frame
+void Draw(); // the main drawing function where everything gets drawn on screen
+void draw_dash_line(); // function to draw the dash effect behind the player
+void AddDashLineVertexes(); // function that calculates the verticies of the dash effect
+void calculate_shoot_dir(); // function that calculates the normal direction between the player and the current mouse position
+void select_guns(); // function that switches between guns
+void init_walls(); // function to initilize walls at the start of the game
+void Player_Movement(float dt); // function responsible for the player movement
+void Shooting(float dt); //function that handles shooting and spawning new bullets
+void Bullet_Movement_Collision(float dt); //function that handles bullet collision
+void Dashing(float dt); //function that calculates dash direction and does the dashing
+void Player_Collision(float dt); // function that calculates and manages player collision with anything specified
+void GetTextures(); //function that gets the used textures by the game at the start of the program
+void UpdateAnimationCounter(float dt, int maximagecounter); //function that handles the changing of the animation frame with the specified number of frames as argument
+void Switch_States(state& curr_state, float dt); // function that manages the current state of the player, i.e: player state right now is dashing, player state right now is dying, etc
+void Switch_Current_Gun_Attributes(); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
 
 
+//all sprites in the game
 Sprite Player;
 RectangleShape Gun(Vector2f(1.f,1.f));
 Sprite Pistol_S;
@@ -81,52 +92,83 @@ RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
 RectangleShape wall4(Vector2f(10000.0, 50.0));
 
+//dash booleans
 bool isdashing = false;
 bool dashready = true;
+//reload booleans
 bool isreloading = false;
 
+//wall bounds vector to detect collision
 std::vector <FloatRect> Wall_Bounds;
 
+//animation textures
 Texture WalkAnimation[8];
 Texture IdleAnimation[6];
+//gun textures
 Texture Pistol_T;
 Texture SMG_T;
 Texture ShotGun_T;
 
-float x, y, playerspeed = 500.0;
-float maxcooldown = 10;
-float timesincedash = 0;
-float fire_rate_counter;
-float AnimationCounter = 0;
-float AnimationSwitchTime = 0.2f;
+//reload counter and current time that takes the reload to finish
 float current_reload_time;
 float reload_time_counter = 0;
-
+//dash counter
+float timesincedash = 0;
+//animation counter and time between each texture takes
+float AnimationCounter = 0;
+float AnimationSwitchTime = 0.2f;
 int ImageCounter = 0;
-int current_ammo;
-int current_ammo_stock;
+//firerate counter
+float fire_rate_counter;
+//player speed and direction(x,y)
+float x, y, playerspeed = 500.0;
+
+//current gun attributes
+int* current_ammo = &pistolbulletsloaded; // ui
+int* current_ammo_stock = &pistolammostock; // ui
 int current_clip_size;
-
-float current_fire_rate = pistolfirerate;
-float current_damage = pistoldamage;
-float current_spread = pistolspread;
-float current_bullets_per_shot = pistolbulletpershot;
-
+float current_fire_rate;
+float current_damage;
+float current_spread;
+float current_bullets_per_shot;
+//player positions
 Vector2f current_player_pos;
 Vector2f previous_player_pos;
-Vector2f MousePos;
 Vector2f center_of_player_pos;
+//normal direction variables
+Vector2f MousePos;
 Vector2f dir_vector;
 Vector2f Norm_dir_vector;
+//level array
+int level1[16][16] =
+{
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
+    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
+};
 
 VertexArray dasheline(Quads);
+
 std::vector<bullet> bullets;
 
 int main()
 {
     init_walls();
-    GetTextures();
-    state state = state::idle;
+    GetTextures(); 
+    state state = state::dashing;
     Player.setTexture(WalkAnimation[0]);
     Player.setOrigin(Vector2f(Player.getGlobalBounds().width /2 , Player.getGlobalBounds().height / 2));
     Player.setPosition(Vector2f(100, 100));
@@ -155,11 +197,11 @@ int main()
 }
 void Update(float dt, state& curr_state)
 {
-    //DashOrigin.setPosition(Player.getPosition().x + 15, Player.getPosition().y);
     fire_rate_counter += dt;
     current_player_pos = DashOrigin.getPosition();
     Vector2i pixelpos = Mouse::getPosition(window);
     MousePos = window.mapPixelToCoords(pixelpos);
+    Switch_Current_Gun_Attributes();
     calculate_shoot_dir();
     select_guns();
     // movement
@@ -172,7 +214,7 @@ void Update(float dt, state& curr_state)
     previous_player_pos = current_player_pos;
 
     //check collision
-    Player_Collision();
+    Player_Collision(dt);
 }
 void Switch_States(state& curr_state,float dt)
 {
@@ -199,7 +241,7 @@ void GetTextures()
     for (int i = 0; i < 5; i++)
     {
         IdleAnimation[i].loadFromFile("Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/Idle/idle_" + std::to_string(i) + ".png");
-    }
+    }  
     ShotGun_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/shotgun.png"); 
     ShotGun_S.setTexture(ShotGun_T);
     SMG_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/assaultrifle.png");
@@ -220,7 +262,7 @@ void UpdateAnimationCounter(float dt,int maximagecounter)
         }
     }
 }
-void Player_Collision()
+void Player_Collision(float dt)
 {
     for (int i = 0; i < Wall_Bounds.size(); i++)
     {
@@ -235,26 +277,22 @@ void Player_Collision()
             {
                 if (Player_Bounds.left < Wall_bound.left)
                 {
-                    //Player.setPosition(Wall_bound.left - Player_Bounds.width, Player.getPosition().y);
-                    Player.move(-1.25f, 0);
+                    Player.move(-playerspeed * dt, 0);
                 }
                 else
                 {
-                   // Player.setPosition(Wall_bound.left + Player_Bounds.width, Player.getPosition().y);
-                    Player.move(1.25f, 0);
+                    Player.move(playerspeed * dt, 0);
                 }
             }
             else
             {
                 if (Player_Bounds.top < Wall_bound.top)
                 {
-                   // Player.setPosition(Player.getPosition().x, Wall_bound.top - Player_Bounds.height);
-                    Player.move(0, -1.25f);
+                    Player.move(0, -playerspeed * dt);
                 }
                 else
                 {
-                    //Player.setPosition(Player.getPosition().x, Wall_bound.top + Wall_bound.height);
-                    Player.move(0, 1.25f);
+                    Player.move(0, playerspeed * dt);
                 }
             }
         }
@@ -303,9 +341,45 @@ void Bullet_Movement_Collision(float dt)
         }
     }
 }
+void Switch_Current_Gun_Attributes()
+{
+    switch (Curr_Gun_state)
+    {
+    case Pistol:
+        current_fire_rate = pistolfirerate;
+        current_damage = pistoldamage;
+        current_bullets_per_shot = pistolbulletpershot;
+        current_spread = pistolspread;
+        current_ammo = &pistolbulletsloaded;
+        current_ammo_stock = &pistolammostock;
+        current_clip_size = pistolclipsize;
+        current_reload_time = pistolreloadtime;
+        break;
+    case Smg:
+        current_fire_rate = riflefirerate;
+        current_damage = rifledamage;
+        current_bullets_per_shot = riflebulletpershot;
+        current_spread = riflespread;
+        current_ammo = &riflebulletsloaded;
+        current_ammo_stock = &rifleammostock;
+        current_clip_size = rifleclipsize;
+        current_reload_time = riflereloadtime;
+        break;
+    case Shotgun:
+        current_fire_rate = shotgunfirerate;
+        current_damage = shotgundamage;
+        current_bullets_per_shot = shotgunbulletpershot;
+        current_spread = shotgunspread;
+        current_ammo = &shotgunbulletsloaded;
+        current_ammo_stock = &shotgunammostock;
+        current_clip_size = shotgunclipsize;
+        current_reload_time = shotgunreloadtime;
+        break;
+    }
+}
 void Shooting(float dt)
 {
-    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && current_ammo > 0 )
+    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && *current_ammo > 0 )
     {
         for (int i = 0; i < current_bullets_per_shot; i++)
         {
@@ -326,35 +400,35 @@ void Shooting(float dt)
             newbullet.damage = current_damage;
             bullets.push_back(newbullet);
         }
-        current_ammo--;
+        *current_ammo-=1;
         fire_rate_counter = 0;
     }
-    if (((current_ammo <= 0 || Keyboard::isKeyPressed(Keyboard::R)) && current_ammo_stock >= 0) || isreloading)
+    if (((*current_ammo <= 0 || Keyboard::isKeyPressed(Keyboard::R)) && *current_ammo_stock >= 0) || isreloading)
     {
         if (!isreloading)
         {
-            current_ammo_stock += current_ammo;
-            current_ammo = 0;
+            *current_ammo_stock += *current_ammo;
+            *current_ammo = 0;
         }
         isreloading = true;
         reload_time_counter += dt;
         if (reload_time_counter > current_reload_time)
         {
-            if (current_ammo_stock <= current_clip_size)
+            if (*current_ammo_stock <= current_clip_size)
             {
-                current_ammo = current_ammo_stock;
-                current_ammo_stock = 0;
+                *current_ammo = *current_ammo_stock;
+                *current_ammo_stock = 0;
             }
             else
             {
-                current_ammo += current_clip_size;
-                current_ammo_stock -= current_clip_size;
+                *current_ammo += current_clip_size;
+                *current_ammo_stock -= current_clip_size;
             }
             reload_time_counter = 0;
             isreloading = false;
         }
     }
-    std::cout << current_ammo << " " << current_ammo_stock << " " << current_clip_size << std::endl;
+    std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
 }
 void Player_Movement(float dt)
 {
@@ -363,13 +437,13 @@ void Player_Movement(float dt)
     if (Keyboard::isKeyPressed(Keyboard::A))
     {
         x = -1;
-        Player.setScale(-0.2f, 0.2f);    
+        //Player.setScale(-0.2f, 0.2f);    
         DashOrigin.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 10);
     }
     if (Keyboard::isKeyPressed(Keyboard::D))
     {
         x = 1;
-        Player.setScale(0.2f, 0.2f);
+        //Player.setScale(0.2f, 0.2f);
         DashOrigin.setPosition(Player.getPosition().x - 50, Player.getPosition().y + 10);
     }
     if (Keyboard::isKeyPressed(Keyboard::W))
@@ -387,56 +461,32 @@ void Player_Movement(float dt)
 }
 void init_walls()
 {
-    wall1.setFillColor(Color::Black);
-    wall1.setPosition(0, 0);
-    Wall_Bounds.push_back(wall1.getGlobalBounds());
-    wall2.setFillColor(Color::Black);
-    wall2.setPosition(10000, 0);
-    Wall_Bounds.push_back(wall2.getGlobalBounds());
-    wall3.setFillColor(Color::Black);
-    wall3.setPosition(0, 0);
-    Wall_Bounds.push_back(wall3.getGlobalBounds());
-    wall4.setFillColor(Color::Black);
-    wall4.setPosition(0, 10000);
-    Wall_Bounds.push_back(wall4.getGlobalBounds());
-
+    RectangleShape wall(Vector2f(128,128));
+    wall.setFillColor(Color::Black);
+    for (int i = 0; i < 16; i++)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            if (level1[j][i] == 1)
+            {
+                wall.setPosition(i * 128, j * 128);
+                Wall_Bounds.push_back(wall.getGlobalBounds());
+            }
+        }
+    }
 }
 void select_guns()
 {
     if (Keyboard::isKeyPressed(Keyboard::Num1))
     {
-        current_fire_rate = pistolfirerate;
-        current_damage = pistoldamage;
-        current_bullets_per_shot = pistolbulletpershot;
-        current_spread = pistolspread;
-        current_ammo = pistolbulletsloaded;
-        current_ammo_stock = pistolammostock;
-        current_clip_size = pistolclipsize;
-        current_reload_time = pistolreloadtime;
         Curr_Gun_state = Gun_State::Pistol;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num2))
     {
-        current_fire_rate = riflefirerate;
-        current_damage = rifledamage;
-        current_bullets_per_shot = riflebulletpershot;
-        current_spread = riflespread;
-        current_ammo = riflebulletsloaded;
-        current_ammo_stock = rifleammostock;
-        current_clip_size = rifleclipsize;
-        current_reload_time = riflereloadtime;
         Curr_Gun_state = Gun_State::Smg;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num3))
     {
-        current_fire_rate = shotgunfirerate;
-        current_damage = shotgundamage;
-        current_bullets_per_shot = shotgunbulletpershot;
-        current_spread = shotgunspread;
-        current_ammo = shotgunbulletsloaded;
-        current_ammo_stock = shotgunammostock;
-        current_clip_size = shotgunclipsize;
-        current_reload_time = shotgunreloadtime;
         Curr_Gun_state = Gun_State::Shotgun;
     }
 }
@@ -473,7 +523,6 @@ void AddDashLineVertexes()
 void Draw()
 {
     window.clear(Color::White);
-    window.draw(Player);
     if (Player.getScale().x > 0)
     {
         if (Norm_dir_vector.x > 0)
@@ -496,28 +545,26 @@ void Draw()
             Gun.setScale(0.2f, -0.2f);
         }
     }
-    switch (Curr_Gun_state)
+    if (Norm_dir_vector.x > 0)
     {
-    case Pistol:
-        Pistol_S.setScale(Gun.getScale());
-        Pistol_S.setPosition(Gun.getPosition());
-        Pistol_S.setRotation(Gun.getRotation());
-        window.draw(Pistol_S);
-        break;
-    case Smg:
-        SMG_S.setScale(Gun.getScale());
-        SMG_S.setPosition(Gun.getPosition());
-        SMG_S.setRotation(Gun.getRotation());
-        
-        
-        window.draw(SMG_S);
-        break;
-    case Shotgun:
-        ShotGun_S.setScale(Gun.getScale());
-        ShotGun_S.setPosition(Gun.getPosition());
-        ShotGun_S.setRotation(Gun.getRotation());
-        window.draw(ShotGun_S);
-        break;
+        Player.setScale(0.1f, 0.1f);
+    }
+    else
+    {
+        Player.setScale(-0.1f, 0.1f);
+    }
+    RectangleShape wall(Vector2f(128, 128));
+    wall.setFillColor(Color::Black);
+    for (int i = 0; i < 16; i++)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            if (level1[j][i] == 1)
+            {
+                wall.setPosition(i * 128, j * 128);
+                window.draw(wall);
+            }
+        }
     }
     for (int i = 0; i < bullets.size(); i++)
     {
@@ -534,6 +581,30 @@ void Draw()
     else
     {
         dasheline.clear();
+    }
+    window.draw(Player);
+    switch (Curr_Gun_state)
+    {
+    case Pistol:
+        Pistol_S.setScale(Gun.getScale());
+        Pistol_S.setPosition(Gun.getPosition());
+        Pistol_S.setRotation(Gun.getRotation());
+        window.draw(Pistol_S);
+        break;
+    case Smg:
+        SMG_S.setScale(Gun.getScale());
+        SMG_S.setPosition(Gun.getPosition());
+        SMG_S.setRotation(Gun.getRotation());
+
+
+        window.draw(SMG_S);
+        break;
+    case Shotgun:
+        ShotGun_S.setScale(Gun.getScale());
+        ShotGun_S.setPosition(Gun.getPosition());
+        ShotGun_S.setRotation(Gun.getRotation());
+        window.draw(ShotGun_S);
+        break;
     }
     window.display();
 }

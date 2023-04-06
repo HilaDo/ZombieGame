@@ -12,3 +12,11 @@
 .vs/ZOMBIEGAMEe/FileContentIndex/7af8954c-1a2b-43c7-89de-91e6a8235ea1.vsidx
 .vs/ZOMBIEGAMEe/v17/Browse.VC.db
 .vs/ZOMBIEGAMEe/FileContentIndex/7af8954c-1a2b-43c7-89de-91e6a8235ea1.vsidx
+ZOMBIEGAMEe/x64/Debug/ZOMBIEGAMEe.exe.recipe
+ZOMBIEGAMEe/x64/Debug/ZOMBIEGAMEe.exe.recipe
+*.recipe
+*.log
+*.lastbuildstate
+*.vcxproj
+ZOMBIEGAMEe/ZOMBIEGAMEe.vcxproj
+ZOMBIEGAMEe/ZOMBIEGAMEe.vcxproj.user
