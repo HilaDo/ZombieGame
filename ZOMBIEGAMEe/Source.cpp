@@ -21,24 +21,27 @@ int Money;
 #define pistolbulletpershot 1
 #define pistolclipsize 9;
 #define pistolreloadtime 1;
+#define Pistol_bullets_loaded_per_reload pistolclipsize
 int pistolammostock = 240;
 int pistolbulletsloaded = pistolclipsize;
 
-#define riflefirerate 0.1f
+#define riflefirerate 0.2f
 #define rifledamage 3
 #define riflespread 0
 #define riflebulletpershot 1
 #define rifleclipsize 30;
 #define riflereloadtime 1;
-int rifleammostock = 90;
+#define Rifle_bullets_loaded_per_reload rifleclipsize
+int rifleammostock = 999999999;
 int riflebulletsloaded = rifleclipsize;
 
-#define shotgunfirerate 2
+#define shotgunfirerate 0.7f
 #define shotgundamage 1
 #define shotgunspread 1
 #define shotgunbulletpershot 10
 #define shotgunclipsize 8
 #define shotgunreloadtime 1;
+#define ShotGun_bullets_loaded_per_reload 1
 int shotgunammostock = 24;
 int shotgunbulletsloaded = shotgunclipsize;
 
@@ -76,7 +79,17 @@ void Player_Collision(float dt); // function that calculates and manages player 
 void GetTextures(); //function that gets the used textures by the game at the start of the program
 void UpdateAnimationCounter(float dt, int maximagecounter); //function that handles the changing of the animation frame with the specified number of frames as argument
 void Switch_States(state& curr_state, float dt); // function that manages the current state of the player, i.e: player state right now is dashing, player state right now is dying, etc
-void Switch_Current_Gun_Attributes(); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
+void Switch_Current_Gun_Attributes(float dt); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
+void Gun_UpdateAnimationCounter(float dt, int maximagecounter, double switchtime); // function that handles gun animations
+void Gun_Muzzle_UpdateAnimationCounter(float dt, int maximagecounter, double switchtime);
+void Gun_Casing_AnimationCounter(float dt, int maximagecounter, double switchtime);
+void Guns_Animation_Handling(float dt);
+
+
+CircleShape test(15);
+Vector2i center;
+Vector2f globalcenter;
+
 
 
 //all sprites in the game
@@ -92,11 +105,16 @@ RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
 RectangleShape wall4(Vector2f(10000.0, 50.0));
 
+Vector2f casingposition;
+
 //dash booleans
 bool isdashing = false;
 bool dashready = true;
 //reload booleans
 bool isreloading = false;
+//shoot boolean
+bool isshooting = false;
+bool trigger = true;
 
 //wall bounds vector to detect collision
 std::vector <FloatRect> Wall_Bounds;
@@ -104,6 +122,15 @@ std::vector <FloatRect> Wall_Bounds;
 //animation textures
 Texture WalkAnimation[8];
 Texture IdleAnimation[6];
+
+Texture pistol_shoot_animations[12];
+Texture pistol_reload_animation[26];
+
+Texture SMG_Shoot_Animations[24];
+Texture SMG_Reload_Animations[16];
+
+Texture shotgun_shoot_animation[14];
+Texture shotgun_reload_animation[14];
 //gun textures
 Texture Pistol_T;
 Texture SMG_T;
@@ -118,6 +145,8 @@ float timesincedash = 0;
 float AnimationCounter = 0;
 float AnimationSwitchTime = 0.2f;
 int ImageCounter = 0;
+int gun_image_counter = 0;
+float gun_Animation_Counter = 0;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
@@ -131,6 +160,7 @@ float current_fire_rate;
 float current_damage;
 float current_spread;
 float current_bullets_per_shot;
+int current_bullets_loaded_per_reload;
 //player positions
 Vector2f current_player_pos;
 Vector2f previous_player_pos;
@@ -190,6 +220,8 @@ int main()
         window.setView(view);
         Update(elapsed, state);
         Switch_States(state, elapsed);
+        center = Vector2i(window.getSize().x / 2, window.getSize().y / 2);
+        globalcenter = window.mapPixelToCoords(center);
         Draw();
     }
 
@@ -201,7 +233,8 @@ void Update(float dt, state& curr_state)
     current_player_pos = DashOrigin.getPosition();
     Vector2i pixelpos = Mouse::getPosition(window);
     MousePos = window.mapPixelToCoords(pixelpos);
-    Switch_Current_Gun_Attributes();
+    Switch_Current_Gun_Attributes(dt);
+    Guns_Animation_Handling(dt);
     calculate_shoot_dir();
     select_guns();
     // movement
@@ -241,13 +274,34 @@ void GetTextures()
     for (int i = 0; i < 5; i++)
     {
         IdleAnimation[i].loadFromFile("Free 2D Animated Vector Game Character Sprites/Full body animated characters/Char 3/with hands/Idle/idle_" + std::to_string(i) + ".png");
-    }  
-    ShotGun_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/shotgun.png"); 
-    ShotGun_S.setTexture(ShotGun_T);
-    SMG_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/assaultrifle.png");
-    SMG_S.setTexture(SMG_T);
-    Pistol_T.loadFromFile("Free 2D Animated Vector Game Character Sprites/PNG higher resolution (@2x)/pistol.png");
-    Pistol_S.setTexture(Pistol_T);    
+    }
+    for (int i = 0; i < 12; i++)
+    {
+        pistol_shoot_animations[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/shooting/tile" + std::to_string(i) + ".png");
+    } for (int i = 0; i < 26; i++)
+    {
+        pistol_reload_animation[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/reload/frame (" + std::to_string(i) + ").png");
+    }
+    for (int i = 0; i < 16; i++)
+    {
+        SMG_Shoot_Animations[i].loadFromFile("guns/Sprite-sheets/Assault_rifle_V1.00/test/frame_" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 16; i++)
+    {
+        SMG_Reload_Animations[i].loadFromFile("guns/Sprite-sheets/Assault_rifle_V1.00/WEAPON/reloading/tile" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 14; i++)
+    {
+        shotgun_shoot_animation[i].loadFromFile("guns/Sprite-sheets/Shotgun_V1.00/shooting/frame (" + std::to_string(i) + ").png");
+    }
+    for (int i = 0; i < 14; i++)
+    {
+        shotgun_reload_animation[i].loadFromFile("guns/Sprite-sheets/Shotgun_V1.00/reloading/frame (" + std::to_string(i) + ").png");
+    }
+    SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2+15);
+    ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
+    Pistol_S.setTexture(pistol_shoot_animations[0]);
+    Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 - 17, Pistol_S.getLocalBounds().height / 2);
 }
 void UpdateAnimationCounter(float dt,int maximagecounter)
 {
@@ -259,6 +313,19 @@ void UpdateAnimationCounter(float dt,int maximagecounter)
         if (ImageCounter >= maximagecounter)
         {
             ImageCounter = 0;
+        }
+    }
+}
+void Gun_UpdateAnimationCounter(float dt, int maximagecounter,double switchtime)
+{
+    gun_Animation_Counter += dt;
+    if (gun_Animation_Counter >= switchtime)
+    {
+        gun_Animation_Counter = 0;
+        gun_image_counter++;
+        if (gun_image_counter >= maximagecounter)
+        {
+            gun_image_counter = 0;
         }
     }
 }
@@ -341,7 +408,7 @@ void Bullet_Movement_Collision(float dt)
         }
     }
 }
-void Switch_Current_Gun_Attributes()
+void Switch_Current_Gun_Attributes(float dt)
 {
     switch (Curr_Gun_state)
     {
@@ -354,6 +421,7 @@ void Switch_Current_Gun_Attributes()
         current_ammo_stock = &pistolammostock;
         current_clip_size = pistolclipsize;
         current_reload_time = pistolreloadtime;
+        current_bullets_loaded_per_reload = Pistol_bullets_loaded_per_reload;
         break;
     case Smg:
         current_fire_rate = riflefirerate;
@@ -364,6 +432,7 @@ void Switch_Current_Gun_Attributes()
         current_ammo_stock = &rifleammostock;
         current_clip_size = rifleclipsize;
         current_reload_time = riflereloadtime;
+        current_bullets_loaded_per_reload = Rifle_bullets_loaded_per_reload;
         break;
     case Shotgun:
         current_fire_rate = shotgunfirerate;
@@ -374,7 +443,79 @@ void Switch_Current_Gun_Attributes()
         current_ammo_stock = &shotgunammostock;
         current_clip_size = shotgunclipsize;
         current_reload_time = shotgunreloadtime;
+        current_bullets_loaded_per_reload = ShotGun_bullets_loaded_per_reload;
         break;
+    }
+}
+void Guns_Animation_Handling(float dt)
+{
+    int gun_frames = 24;
+    if (Mouse::isButtonPressed(Mouse::Left) && !isreloading)
+    {
+        isshooting = true;
+        if (trigger == true)
+        {
+            gun_image_counter = 0;
+            trigger = false;
+        }
+        switch (Curr_Gun_state)
+        {
+        case Pistol:
+            Pistol_S.setTexture(pistol_shoot_animations[gun_image_counter]);
+            gun_frames = 12;
+            break;
+        case Smg:
+            SMG_S.setTexture(SMG_Shoot_Animations[gun_image_counter]);
+            gun_frames = 16;
+            break;
+        case Shotgun:
+            ShotGun_S.setTexture(shotgun_shoot_animation[gun_image_counter]);
+            gun_frames = 14;
+            break;
+        }
+    }
+    else if (Keyboard::isKeyPressed(Keyboard::R))
+    {
+        trigger = true;
+    }
+    else if (isreloading && *current_ammo_stock > 0)
+    {
+        if (trigger)
+        {
+            gun_image_counter = 0;
+            trigger = false;
+        }
+        switch (Curr_Gun_state)
+        {
+        case Pistol:
+            Pistol_S.setTexture(pistol_reload_animation[gun_image_counter]);
+            gun_frames = 26;
+            break;
+        case Smg:
+            SMG_S.setTexture(SMG_Reload_Animations[gun_image_counter]);
+            gun_frames = 16;
+            break;
+        case Shotgun:
+            ShotGun_S.setTexture(shotgun_reload_animation[gun_image_counter]);
+            gun_frames = 14;
+            break;
+        }
+    }
+    else
+    {
+        SMG_S.setTexture(SMG_Shoot_Animations[0]);
+        Pistol_S.setTexture(pistol_shoot_animations[0]);
+        ShotGun_S.setTexture(shotgun_shoot_animation[0]);
+        trigger = true;
+        isshooting = false;
+    }
+    if (isreloading)
+    {
+        Gun_UpdateAnimationCounter(dt, gun_frames, current_reload_time / gun_frames);
+    }
+    else
+    {
+        Gun_UpdateAnimationCounter(dt, gun_frames, current_fire_rate / gun_frames );
     }
 }
 void Shooting(float dt)
@@ -388,11 +529,11 @@ void Shooting(float dt)
             newbullet.shape.setRadius(10.f);
             switch (Curr_Gun_state)
             {
-            case Pistol: newbullet.shape.setPosition(Norm_dir_vector.x * 50.f + Player.getPosition().x, Norm_dir_vector.y * 50.f + Player.getPosition().y + 15);
+            case Pistol: newbullet.shape.setPosition(test.getPosition());
                 break;
-            case Smg:newbullet.shape.setPosition(Norm_dir_vector.x * 150.f + Player.getPosition().x, Norm_dir_vector.y * 150.f + Player.getPosition().y + 30);
+            case Smg:newbullet.shape.setPosition(test.getPosition());
                 break;
-            case Shotgun:newbullet.shape.setPosition(Norm_dir_vector.x * 200.f + Player.getPosition().x, Norm_dir_vector.y * 200.f + Player.getPosition().y +  25);
+            case Shotgun:newbullet.shape.setPosition(test.getPosition());
                 break;
             }
             Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
@@ -403,7 +544,7 @@ void Shooting(float dt)
         *current_ammo-=1;
         fire_rate_counter = 0;
     }
-    if (((*current_ammo <= 0 || Keyboard::isKeyPressed(Keyboard::R)) && *current_ammo_stock >= 0) || isreloading)
+    if (((*current_ammo <= 0 || Keyboard::isKeyPressed(Keyboard::R)) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
     {
         if (!isreloading)
         {
@@ -412,23 +553,29 @@ void Shooting(float dt)
         }
         isreloading = true;
         reload_time_counter += dt;
-        if (reload_time_counter > current_reload_time)
+        while (*current_ammo < current_clip_size)
         {
-            if (*current_ammo_stock <= current_clip_size)
+            if (reload_time_counter > current_reload_time)
             {
-                *current_ammo = *current_ammo_stock;
-                *current_ammo_stock = 0;
+                if (*current_ammo_stock <= current_clip_size)
+                {
+                    *current_ammo = *current_ammo_stock;
+                    *current_ammo_stock = 0;
+                }
+                else
+                {
+                    *current_ammo += current_bullets_loaded_per_reload;
+                    *current_ammo_stock -= current_bullets_loaded_per_reload;
+                }
+                reload_time_counter = 0;
             }
-            else
-            {
-                *current_ammo += current_clip_size;
-                *current_ammo_stock -= current_clip_size;
-            }
-            reload_time_counter = 0;
-            isreloading = false;
+        }
+        isreloading = false;
+        for (int i = 0; i < current_bullets_loaded_per_reload; i++)
+        
         }
     }
-    std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
+   // std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
 }
 void Player_Movement(float dt)
 {
@@ -480,14 +627,17 @@ void select_guns()
     if (Keyboard::isKeyPressed(Keyboard::Num1))
     {
         Curr_Gun_state = Gun_State::Pistol;
+        trigger = true;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num2))
     {
         Curr_Gun_state = Gun_State::Smg;
+        trigger = true;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num3))
     {
         Curr_Gun_state = Gun_State::Shotgun;
+        trigger = true;
     }
 }
 void calculate_shoot_dir()
@@ -522,7 +672,7 @@ void AddDashLineVertexes()
 }
 void Draw()
 {
-    window.clear(Color::White);
+    window.clear(Color::Blue);
     if (Player.getScale().x > 0)
     {
         if (Norm_dir_vector.x > 0)
@@ -586,25 +736,26 @@ void Draw()
     switch (Curr_Gun_state)
     {
     case Pistol:
-        Pistol_S.setScale(Gun.getScale());
+        Pistol_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
         Pistol_S.setPosition(Gun.getPosition());
         Pistol_S.setRotation(Gun.getRotation());
         window.draw(Pistol_S);
         break;
     case Smg:
-        SMG_S.setScale(Gun.getScale());
+        SMG_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
         SMG_S.setPosition(Gun.getPosition());
         SMG_S.setRotation(Gun.getRotation());
-
-
         window.draw(SMG_S);
         break;
     case Shotgun:
-        ShotGun_S.setScale(Gun.getScale());
+        ShotGun_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
         ShotGun_S.setPosition(Gun.getPosition());
         ShotGun_S.setRotation(Gun.getRotation());
         window.draw(ShotGun_S);
         break;
     }
+    test.setFillColor(Color::Green);
+    test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
+   // window.draw(test);
     window.display();
 }
