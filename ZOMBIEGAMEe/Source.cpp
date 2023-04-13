@@ -22,7 +22,7 @@ int Money;
 #define pistolclipsize 9;
 #define pistolreloadtime 1;
 #define Pistol_bullets_loaded_per_reload pistolclipsize
-int pistolammostock = 240;
+int pistolammostock = 18;
 int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.2f
@@ -42,7 +42,7 @@ int riflebulletsloaded = rifleclipsize;
 #define shotgunclipsize 8
 #define shotgunreloadtime 1;
 #define ShotGun_bullets_loaded_per_reload 1
-int shotgunammostock = 24;
+int shotgunammostock = 10;
 int shotgunbulletsloaded = shotgunclipsize;
 
 using namespace sf;
@@ -81,8 +81,6 @@ void UpdateAnimationCounter(float dt, int maximagecounter); //function that hand
 void Switch_States(state& curr_state, float dt); // function that manages the current state of the player, i.e: player state right now is dashing, player state right now is dying, etc
 void Switch_Current_Gun_Attributes(float dt); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
 void Gun_UpdateAnimationCounter(float dt, int maximagecounter, double switchtime); // function that handles gun animations
-void Gun_Muzzle_UpdateAnimationCounter(float dt, int maximagecounter, double switchtime);
-void Gun_Casing_AnimationCounter(float dt, int maximagecounter, double switchtime);
 void Guns_Animation_Handling(float dt);
 
 
@@ -131,10 +129,6 @@ Texture SMG_Reload_Animations[16];
 
 Texture shotgun_shoot_animation[14];
 Texture shotgun_reload_animation[14];
-//gun textures
-Texture Pistol_T;
-Texture SMG_T;
-Texture ShotGun_T;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -229,7 +223,6 @@ int main()
 }
 void Update(float dt, state& curr_state)
 {
-    fire_rate_counter += dt;
     current_player_pos = DashOrigin.getPosition();
     Vector2i pixelpos = Mouse::getPosition(window);
     MousePos = window.mapPixelToCoords(pixelpos);
@@ -278,7 +271,8 @@ void GetTextures()
     for (int i = 0; i < 12; i++)
     {
         pistol_shoot_animations[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/shooting/tile" + std::to_string(i) + ".png");
-    } for (int i = 0; i < 26; i++)
+    } 
+    for (int i = 0; i < 26; i++)
     {
         pistol_reload_animation[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/reload/frame (" + std::to_string(i) + ").png");
     }
@@ -298,7 +292,7 @@ void GetTextures()
     {
         shotgun_reload_animation[i].loadFromFile("guns/Sprite-sheets/Shotgun_V1.00/reloading/frame (" + std::to_string(i) + ").png");
     }
-    SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2+15);
+    SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setTexture(pistol_shoot_animations[0]);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 - 17, Pistol_S.getLocalBounds().height / 2);
@@ -381,6 +375,7 @@ void Dashing(float dt)
         {
             isdashing = false;
             playerspeed = 500;
+            timesincedash = 0;
         }
     }
     if (!isdashing && !dashready)
@@ -450,9 +445,10 @@ void Switch_Current_Gun_Attributes(float dt)
 void Guns_Animation_Handling(float dt)
 {
     int gun_frames = 24;
-    if (Mouse::isButtonPressed(Mouse::Left) && !isreloading)
+    if (Mouse::isButtonPressed(Mouse::Left) && !isreloading && *current_ammo > 0)
     {
         isshooting = true;
+        
         if (trigger == true)
         {
             gun_image_counter = 0;
@@ -520,7 +516,8 @@ void Guns_Animation_Handling(float dt)
 }
 void Shooting(float dt)
 {
-    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && *current_ammo > 0 )
+    fire_rate_counter += dt;
+    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && *current_ammo > 0 && !isreloading)
     {
         for (int i = 0; i < current_bullets_per_shot; i++)
         {
@@ -544,38 +541,39 @@ void Shooting(float dt)
         *current_ammo-=1;
         fire_rate_counter = 0;
     }
-    if (((*current_ammo <= 0 || Keyboard::isKeyPressed(Keyboard::R)) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
+    if ((Keyboard::isKeyPressed(Keyboard::R) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
     {
         if (!isreloading)
         {
-            *current_ammo_stock += *current_ammo;
-            *current_ammo = 0;
+            if (Curr_Gun_state != Gun_State :: Shotgun)
+            {
+                *current_ammo_stock += *current_ammo;
+                *current_ammo = 0;
+            }
         }
         isreloading = true;
         reload_time_counter += dt;
-        while (*current_ammo < current_clip_size)
+        if (reload_time_counter > current_reload_time)
         {
-            if (reload_time_counter > current_reload_time)
+            if (*current_ammo_stock <= current_clip_size)
             {
-                if (*current_ammo_stock <= current_clip_size)
-                {
-                    *current_ammo = *current_ammo_stock;
-                    *current_ammo_stock = 0;
-                }
-                else
-                {
-                    *current_ammo += current_bullets_loaded_per_reload;
-                    *current_ammo_stock -= current_bullets_loaded_per_reload;
-                }
-                reload_time_counter = 0;
+                *current_ammo = *current_ammo_stock; //to do fix shotgun empty
+                *current_ammo_stock = 0;
             }
+            else
+            {
+                *current_ammo += current_bullets_loaded_per_reload;
+                *current_ammo_stock -= current_bullets_loaded_per_reload;
+            }
+            reload_time_counter = 0;
         }
-        isreloading = false;
-        for (int i = 0; i < current_bullets_loaded_per_reload; i++)
-        
+        if ((Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left) ) || *current_ammo >= current_clip_size)
+        {
+            isreloading = false;
         }
+       
     }
-   // std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
+    std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
 }
 void Player_Movement(float dt)
 {
@@ -645,7 +643,7 @@ void calculate_shoot_dir()
     dir_vector = MousePos - Gun.getPosition();
     Norm_dir_vector = dir_vector / (sqrt(dir_vector.x * dir_vector.x + dir_vector.y * dir_vector.y));
 
-    float rotation = atan2(-1 * Norm_dir_vector.y, -1 * Norm_dir_vector.x) * 180 / pi + 180;
+    float rotation = atan2(Norm_dir_vector.y,Norm_dir_vector.x) * 180 / pi;
     Gun.setRotation(rotation);
 }
 void draw_dash_line()
@@ -673,35 +671,16 @@ void AddDashLineVertexes()
 void Draw()
 {
     window.clear(Color::Blue);
-    if (Player.getScale().x > 0)
-    {
-        if (Norm_dir_vector.x > 0)
-        {
-            Gun.setScale(0.2f, 0.2f);
-        }
-        else
-        {
-            Gun.setScale(0.2f, -0.2f);
-        }
-    }
-    else
-    {
-        if (Norm_dir_vector.x > 0)
-        {
-            Gun.setScale(0.2f, 0.2f);
-        }
-        else
-        {
-            Gun.setScale(0.2f, -0.2f);
-        }
-    }
+
     if (Norm_dir_vector.x > 0)
     {
         Player.setScale(0.1f, 0.1f);
+        Gun.setScale(0.2f, 0.2f);
     }
     else
     {
         Player.setScale(-0.1f, 0.1f);
+        Gun.setScale(0.2f, -0.2f);
     }
     RectangleShape wall(Vector2f(128, 128));
     wall.setFillColor(Color::Black);
@@ -720,10 +699,6 @@ void Draw()
     {
         window.draw(bullets[i].shape);
     }
-    window.draw(wall1);
-    window.draw(wall2);
-    window.draw(wall3);
-    window.draw(wall4);
     if (isdashing)
     {
         draw_dash_line();
@@ -756,6 +731,5 @@ void Draw()
     }
     test.setFillColor(Color::Green);
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
-   // window.draw(test);
     window.display();
 }
