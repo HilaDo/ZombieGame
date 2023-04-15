@@ -784,11 +784,13 @@ void Draw()
     if (Norm_dir_vector.x > 0)
     {
         Player.setScale(3, 3);
+        Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
         Gun.setScale(0.2f, 0.2f);
     }
     else
     {
         Player.setScale(-3, 3);
+        Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
         Gun.setScale(0.2f, -0.2f);
     }
     RectangleShape wall(Vector2f(128, 128));
