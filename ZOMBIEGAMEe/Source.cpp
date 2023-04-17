@@ -230,7 +230,6 @@ int main()
                 window.close();
             }
         }
-        //view.setCenter(Player.getPosition());
         window.setView(view);
         Update(elapsed, state);
         center = Vector2i(window.getSize().x / 2, window.getSize().y / 2);
@@ -298,7 +297,6 @@ void GetTextures()
     }
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
-    Pistol_S.setTexture(pistol_shoot_animations[0]);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 - 17, Pistol_S.getLocalBounds().height / 2);
 }
 //update function
@@ -333,14 +331,12 @@ void Player_Movement(float dt)
     y = 0;
     if (Keyboard::isKeyPressed(Keyboard::A))
     {
-        x = -1;
-        //Player.setScale(-0.2f, 0.2f);    
+        x = -1; 
         DashOrigin.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 10);
     }
     if (Keyboard::isKeyPressed(Keyboard::D))
     {
         x = 1;
-        //Player.setScale(0.2f, 0.2f);
         DashOrigin.setPosition(Player.getPosition().x - 50, Player.getPosition().y + 10);
     }
     if (Keyboard::isKeyPressed(Keyboard::W))
@@ -445,7 +441,7 @@ void Dashing(float dt)
     if (!isdashing && !dashready)
     {
         timesincedash += dt;
-        if (timesincedash > 3.0)
+        if (timesincedash > 2.0)
         {
             dashready = true;
             timesincedash = 0;
