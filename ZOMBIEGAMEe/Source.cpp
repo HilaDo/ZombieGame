@@ -14,6 +14,7 @@ int Money;
 
 #define num_walls_lv1 4
 #define pi 3.14159265
+#define Level1NumWaves 3
 
 #define swordfirerate 0.3f
 #define sworddamage 5
@@ -68,6 +69,51 @@ struct bullet
     float maxvelocity = 5000.0f;
     float damage;
 };
+struct Zombie
+{
+    RectangleShape shape;
+    bool atkready = true;
+    Vector2f currentvelocity;
+    float maxvelocity = 1000;
+    float damage = 5;
+    float attack_fire_rate = 1;
+    float fire_rate_counter = 0;
+    float animation_counter = 0;
+    float animation_duration = 0.25f;
+    int imagecounter = 0;
+    int numberofframes = 8;
+    int health = 30;
+    float distance_from_player;
+    void Zombie_Behaviour(Vector2f player_pos,float dt)
+    {
+        if (!atkready)
+        {
+            fire_rate_counter += dt;
+            if (fire_rate_counter >= attack_fire_rate)
+            {
+                atkready = true;
+                fire_rate_counter = 0;
+            }
+        }
+        Vector2f Direction = player_pos - shape.getPosition();
+        float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
+        Vector2f norm_Direction = Direction / magnitude;
+        distance_from_player = magnitude;
+        if (distance_from_player <= 150.0f)
+        {
+            if (atkready)
+            {
+                Player_Health -= damage;
+                atkready = false;
+            }
+        }
+        else
+        {
+            currentvelocity = norm_Direction * maxvelocity;
+            shape.move(currentvelocity * dt);
+        }
+    }
+};
 void init_walls(); // function to initilize walls at the start of the game
 void GetTextures(); //function that gets the used textures by the game at the start of the program
 
@@ -93,6 +139,9 @@ void Gun_switch_cooldown(float dt);
 void Gun_UpdateAnimationCounter(float dt, int maximagecounter, double switchtime); // function that handles gun animations
 void camera_shake(float dt);
 
+void SpawnZombiesWaves(float dt);
+void HandleZombieBehaviour(float dt);
+
 void Draw(); // the main drawing function where everything gets drawn on screen
 
 CircleShape test(15);
@@ -107,7 +156,7 @@ Sprite SMG_S;
 Sprite ShotGun_S;
 Sprite Sword_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
+RenderWindow window(VideoMode(800, 600), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
 RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
@@ -129,6 +178,7 @@ bool iscamerashake = false;
 bool delayfinished = false;
 //wall bounds vector to detect collision
 std::vector <FloatRect> Wall_Bounds;
+std::vector <Zombie> zombies;
 
 //animation textures
 Texture WalkAnimation[8];
@@ -145,6 +195,8 @@ Texture SMG_Reload_Animations[16];
 Texture shotgun_shoot_animation[14];
 Texture shotgun_reload_animation[14];
 
+Texture zombie_walk_animation[8];
+
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
 float reload_time_counter = 0;
@@ -160,6 +212,8 @@ float camera_shake_counter = 0;
 int camera_shake_magnitude = 10;
 float camera_shake_duration = 1;
 float gun_switch_delay_counter = 0;
+float Wave_Cooldown_counter = 0;
+float Wave_Cooldown_duration = 2.0f;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
@@ -188,7 +242,7 @@ int level1[16][16] =
 {
     {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
     {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,1,1,0,0,0,0,0,0,0,0,0,0,1},
+    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
     {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
     {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
     {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
@@ -204,6 +258,10 @@ int level1[16][16] =
     {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
 };
 
+//zombie variables
+int Current_Wave1 = 1;
+bool canspawn = true;
+
 VertexArray dasheline(Quads);
 
 std::vector<bullet> bullets;
@@ -217,7 +275,7 @@ int main()
     state state = state::idle;
     Player.setTexture(WalkAnimation[0]);
     Player.setOrigin(Vector2f(Player.getGlobalBounds().width /2 , Player.getGlobalBounds().height / 2));
-    Player.setPosition(Vector2f(100, 100));
+    Player.setPosition(Vector2f(200, 200));
     Gun.setOrigin(Player.getOrigin());
     Clock clock;
     Event event;
@@ -310,6 +368,9 @@ void Update(float dt, state& curr_state)
     Switch_States(curr_state, dt);
 
     Dashing(dt);
+    //zombies
+    SpawnZombiesWaves(dt);
+    HandleZombieBehaviour(dt);
 
     calculate_shoot_dir();
     select_guns();
@@ -383,6 +444,39 @@ void Player_Collision(float dt)
                 else
                 {
                     Player.move(0, playerspeed * dt);
+                }
+            }
+        }
+    }
+    for (int i = 0; i < zombies.size(); i++)
+    {
+        FloatRect Player_Bounds = Player.getGlobalBounds();
+        FloatRect intersection;
+        FloatRect Zombie_Bound = zombies[i].shape.getGlobalBounds();
+        if (Player_Bounds.intersects(Zombie_Bound))
+        {
+
+            Player_Bounds.intersects(Zombie_Bound, intersection);
+            if (intersection.width < intersection.height)
+            {
+                if (Player_Bounds.left < Zombie_Bound.left)
+                {
+                    Player.move(-50 * dt, 0);
+                }
+                else
+                {
+                    Player.move(50 * dt, 0);
+                }
+            }
+            else
+            {
+                if (Player_Bounds.top < Zombie_Bound.top)
+                {
+                    Player.move(0, -50 * dt);
+                }
+                else
+                {
+                    Player.move(0, 50 * dt);
                 }
             }
         }
@@ -478,6 +572,7 @@ void calculate_shoot_dir()
     Norm_dir_vector = dir_vector / (sqrt(dir_vector.x * dir_vector.x + dir_vector.y * dir_vector.y));
 
     float rotation = atan2(Norm_dir_vector.y,Norm_dir_vector.x) * 180 / pi;
+    
     Gun.setRotation(rotation);
 }
 void select_guns()
@@ -565,7 +660,7 @@ void Switch_Current_Gun_Attributes(float dt)
         current_clip_size = shotgunclipsize;
         current_reload_time = shotgunreloadtime;
         current_bullets_loaded_per_reload = ShotGun_bullets_loaded_per_reload;
-        camera_shake_magnitude = 5;
+        camera_shake_magnitude = 7;
         break;
     }
 }
@@ -650,6 +745,23 @@ void Bullet_Movement_Collision(float dt)
                 bullets.erase(bullets.begin() + i);
                 break;
             }
+        }
+    }
+    for (int i = 0; i < bullets.size(); i++)
+    {
+        for (int j = 0; j < zombies.size(); j++)
+        {
+            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()))
+            {
+                zombies[j].health -= bullets[i].damage;
+                bullets.erase(bullets.begin() + i);
+                if (zombies[j].health <= 0)
+                {
+                    zombies.erase(zombies.begin() + j);
+                }
+                break;
+            }
+
         }
     }
 }
@@ -772,6 +884,117 @@ void camera_shake(float dt)
     }
 }
 
+//zombie functions
+void SpawnZombiesWaves(float dt)
+{
+    float multiplier = Current_Wave1 / (float)Level1NumWaves;
+    if (canspawn)
+    {
+        canspawn = false;
+        for (int i = 0; i < 15; i++)
+        {
+            Zombie newzombie;
+            newzombie.shape.setSize(Vector2f(50, 50));
+            newzombie.shape.setPosition(globalcenter.x + (rand() / static_cast<float>(RAND_MAX) * 100), globalcenter.y + (rand() / static_cast<float>(RAND_MAX) * 100));            
+            newzombie.shape.setFillColor(Color::Red);
+            newzombie.damage *= multiplier;
+            newzombie.attack_fire_rate *= (1 / multiplier);
+            newzombie.maxvelocity *= multiplier;
+            zombies.push_back(newzombie);
+        }
+    }
+    if (zombies.size()== 0 && !canspawn)
+    {
+        Wave_Cooldown_counter += dt;
+        if (Wave_Cooldown_counter >= Wave_Cooldown_duration)
+        {
+            Current_Wave1++;
+            canspawn = true;
+            Wave_Cooldown_counter = 0;
+        }
+    }
+}
+void HandleZombieBehaviour(float dt)
+{
+    for (int i = 0; i < zombies.size(); i++)
+    {
+        zombies[i].Zombie_Behaviour(Player.getPosition(), dt);
+    }
+    for (int i = 0; i < zombies.size(); i++)
+    {
+        for (int j = 0; j < Wall_Bounds.size(); j++)
+        {
+            FloatRect current_zombie_Bound = zombies[i].shape.getGlobalBounds();
+            FloatRect intersection;
+            FloatRect Wall_bound = Wall_Bounds[j];
+            if (current_zombie_Bound.intersects(Wall_bound))
+            {
+                current_zombie_Bound.intersects(Wall_bound, intersection);
+                if (intersection.width < intersection.height)
+                {
+                    if (current_zombie_Bound.left < Wall_bound.left)
+                    {
+                        zombies[i].shape.move(-1500 * dt, 0);
+                    }
+                    else
+                    {
+                        zombies[i].shape.move(1500 * dt, 0);
+                    }
+                }
+                else
+                {
+                    if (current_zombie_Bound.top < Wall_bound.top)
+                    {
+                        zombies[i].shape.move(0, -1500 * dt);
+                    }
+                    else
+                    {
+                        zombies[i].shape.move(0, 1500 * dt);
+                    }
+                }
+            }
+        }
+        for (int j = 0; j < zombies.size(); j++)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+            FloatRect Current_Zombie_Bound = zombies[i].shape.getGlobalBounds();
+            FloatRect intersection;
+            FloatRect Current_other_zombie_bound = zombies[j].shape.getGlobalBounds();
+            if (Current_Zombie_Bound.intersects(Current_other_zombie_bound))
+            {
+
+                Current_Zombie_Bound.intersects(Current_other_zombie_bound, intersection);
+                if (intersection.width < intersection.height)
+                {
+                    if (Current_Zombie_Bound.left < Current_other_zombie_bound.left)
+                    {
+                        zombies[i].shape.move(-200 * dt, 0);
+                    }
+                    else
+                    {
+                        zombies[i].shape.move(200 * dt, 0);
+                    }
+                }
+                else
+                {
+                    if (Current_Zombie_Bound.top < Current_other_zombie_bound.top)
+                    {
+                        zombies[i].shape.move(0, -200 * dt);
+                    }
+                    else
+                    {
+                        zombies[i].shape.move(0, 200 * dt);
+                    }
+                }
+            }
+        }
+    }
+  
+}
+
 //drawing function
 void Draw()
 {
@@ -805,6 +1028,10 @@ void Draw()
     for (int i = 0; i < bullets.size(); i++)
     {
         window.draw(bullets[i].shape);
+    }
+    for (int i = 0; i < zombies.size(); i++)
+    {
+        window.draw(zombies[i].shape);
     }
     if (isdashing)
     {
