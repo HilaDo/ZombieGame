@@ -6,13 +6,12 @@
 
 
 //to be displayed on ui
-int Player_Health;
+int Player_Health = 10000;
 int Score;
 int Wave_Number;
 int Money;
 
 
-#define num_walls_lv1 4
 #define pi 3.14159265
 #define Level1NumWaves 3
 
@@ -55,8 +54,9 @@ using namespace sf;
 
 enum state
 {
-    idle, walk, dashing, hit, death
+    idle, walk, hit, death
 };
+state curr_state = state::idle;
 enum Gun_State
 {
     Sword,Pistol, Smg, Shotgun
@@ -70,6 +70,7 @@ struct bullet
     float damage;
     int id;
 };
+bool ishit = false;
 struct Zombie
 {
     RectangleShape shape;
@@ -84,7 +85,7 @@ struct Zombie
     float animation_duration = 0.25f;
     int imagecounter = 0;
     int numberofframes = 8;
-    int health = 100;
+    int health = 20;
     float distance_from_player;
     void Zombie_Behaviour(Vector2f player_pos,float dt)
     {
@@ -94,6 +95,7 @@ struct Zombie
             if (fire_rate_counter >= attack_fire_rate)
             {
                 atkready = true;
+                curr_state = state::hit;
                 fire_rate_counter = 0;
             }
         }
@@ -106,6 +108,7 @@ struct Zombie
             if (atkready)
             {
                 Player_Health -= damage;
+                ishit = true;
                 atkready = false;
             }
         }
@@ -119,12 +122,12 @@ struct Zombie
 void init_walls(); // function to initilize walls at the start of the game
 void GetTextures(); //function that gets the used textures by the game at the start of the program
 
-void Update(float dt, state& curr_state); // the main update function where all game logic updates every frame
+void Update(float dt); // the main update function where all game logic updates every frame
 
 void Player_Movement(float dt); // function responsible for the player movement
 void Player_Collision(float dt); // function that calculates and manages player collision with anything specified
-void Switch_States(state& curr_state, float dt); // function that manages the current state of the player, i.e: player state right now is dashing, player state right now is dying, etc
-void UpdateAnimationCounter(float dt, int maximagecounter); //function that handles the changing of the animation frame with the specified number of frames as argument
+void Switch_States(float dt); // function that manages the current state of the player, i.e: player state right now is dashing, player state right now is dying, etc
+void UpdateAnimationCounter(float dt, int maximagecounter, bool isonce); //function that handles the changing of the animation frame with the specified number of frames as argument
 
 void Dashing(float dt); //function that calculates dash direction and does the dashing
 void AddDashLineVertexes(); // function that calculates the verticies of the dash effect
@@ -146,7 +149,7 @@ void HandleZombieBehaviour(float dt);
 
 void Draw(); // the main drawing function where everything gets drawn on screen
 
-CircleShape test(15);
+CircleShape test(50);
 Vector2i center;
 Vector2f globalcenter;
 
@@ -168,6 +171,8 @@ RectangleShape wall4(Vector2f(10000.0, 50.0));
 
 Vector2f casingposition;
 
+bool finishedanimationonce = false;
+
 //dash booleans
 bool isdashing = false;
 bool dashready = true;
@@ -187,6 +192,8 @@ std::vector <Zombie> zombies;
 //animation textures
 Texture WalkAnimation[8];
 Texture IdleAnimation[6];
+Texture HitAnimation[4];
+Texture DeathAnimation[9];
 
 Texture Sword_Atk_animation[8];
 
@@ -218,6 +225,8 @@ float camera_shake_duration = 1;
 float gun_switch_delay_counter = 0;
 float Wave_Cooldown_counter = 0;
 float Wave_Cooldown_duration = 2.0f;
+float hit_counter = 0;
+float hit_duration = 0.5f;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
@@ -272,11 +281,11 @@ std::vector<bullet> bullets;
 
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
+
 int main()
 {
     init_walls();
     GetTextures(); 
-    state state = state::idle;
     Player.setTexture(WalkAnimation[0]);
     Player.setOrigin(Vector2f(Player.getGlobalBounds().width /2 , Player.getGlobalBounds().height / 2));
     Player.setPosition(Vector2f(200, 200));
@@ -293,7 +302,7 @@ int main()
             }
         }
         window.setView(view);
-        Update(elapsed, state);
+        Update(elapsed);
         center = Vector2i(window.getSize().x / 2, window.getSize().y / 2);
         globalcenter = window.mapPixelToCoords(center);
         Draw();
@@ -329,6 +338,14 @@ void GetTextures()
     {
         IdleAnimation[i].loadFromFile("anim by rows/idle/tile" + std::to_string(i) + ".png");
     }
+    for (int i = 0; i < 4; i++)
+    {
+        HitAnimation[i].loadFromFile("anim by rows/hit/tile (" + std::to_string(i) + ").png");
+    }
+    for (int i = 0; i < 9; i++)
+    {
+        DeathAnimation[i].loadFromFile("anim by rows/death/tile (" + std::to_string(i) + ").png");
+    }
     for (int i = 0; i < 12; i++)
     {
         pistol_shoot_animations[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/shooting/tile" + std::to_string(i) + ".png");
@@ -362,31 +379,37 @@ void GetTextures()
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 - 17, Pistol_S.getLocalBounds().height / 2);
 }
 //update function
-void Update(float dt, state& curr_state)
+void Update(float dt)
 {
-    current_player_pos = DashOrigin.getPosition();
-    Vector2i pixelpos = Mouse::getPosition(window);
-    MousePos = window.mapPixelToCoords(pixelpos);
-    Player_Movement(dt);
-    Player_Collision(dt);
-    Switch_States(curr_state, dt);
 
-    Dashing(dt);
-    //zombies
-    SpawnZombiesWaves(dt);
-    HandleZombieBehaviour(dt);
+    Switch_States(dt);
+    
+    if (curr_state != state::death)
+    {
+        std::cout << Player_Health << std::endl;
+        current_player_pos = DashOrigin.getPosition();
+        Vector2i pixelpos = Mouse::getPosition(window);
+        MousePos = window.mapPixelToCoords(pixelpos);
+        Player_Movement(dt);
+        Player_Collision(dt);
 
-    calculate_shoot_dir();
-    select_guns();
-    Switch_Current_Gun_Attributes(dt);
-    knife(dt);
-    Shooting(dt);
-    Bullet_Movement_Collision(dt);
-    Gun_switch_cooldown(dt);
-    if (delayfinished){ Guns_Animation_Handling(dt); }
-    camera_shake(dt);
+        Dashing(dt);
+        //zombies
+        SpawnZombiesWaves(dt);
+        HandleZombieBehaviour(dt);
 
-    previous_player_pos = current_player_pos;
+        calculate_shoot_dir();
+        select_guns();
+        Switch_Current_Gun_Attributes(dt);
+        knife(dt);
+        Shooting(dt);
+        Bullet_Movement_Collision(dt);
+        Gun_switch_cooldown(dt);
+        if (delayfinished) { Guns_Animation_Handling(dt); }
+        camera_shake(dt);
+
+        previous_player_pos = current_player_pos;
+    }
 }
 
 //Player-related functions
@@ -486,7 +509,7 @@ void Player_Collision(float dt)
         }
     }
 }
-void Switch_States(state& curr_state,float dt)
+void Switch_States(float dt)
 {
     if (x == 1 || x == -1 || y == 1 || y == -1)
     {
@@ -496,14 +519,34 @@ void Switch_States(state& curr_state,float dt)
     {
         curr_state = state::idle;
     }
+    if (Player_Health <= 0)
+    {
+        curr_state = state::death;
+    }
+    if (ishit)
+    {
+        curr_state = state::hit;
+    }
     switch (curr_state)
     {
-    case state::walk: UpdateAnimationCounter(dt, 4); Player.setTexture(WalkAnimation[ImageCounter]);break;
-    case state::idle: UpdateAnimationCounter(dt, 4); Player.setTexture(IdleAnimation[ImageCounter]); break;
+    case state::walk: UpdateAnimationCounter(dt, 4, false); Player.setTexture(WalkAnimation[ImageCounter]); break;
+    case state::idle: UpdateAnimationCounter(dt, 4, false); Player.setTexture(IdleAnimation[ImageCounter]); break;
+    case state::death: UpdateAnimationCounter(dt, 9, true); Player.setTexture(DeathAnimation[ImageCounter]); break;
+    case state::hit: UpdateAnimationCounter(dt, 4, true); Player.setTexture(HitAnimation[ImageCounter]); break;
     }
 }
-void UpdateAnimationCounter(float dt,int maximagecounter)
+void UpdateAnimationCounter(float dt,int maximagecounter,bool isonce)
 {
+    if (isonce && finishedanimationonce)
+    {
+        if (curr_state == state::hit)
+        {
+            ishit = false;
+        }
+        curr_state = state::idle;
+        finishedanimationonce = false;
+        return;
+    }
     AnimationCounter += dt;
     if (AnimationCounter >= AnimationSwitchTime)
     {
@@ -511,6 +554,7 @@ void UpdateAnimationCounter(float dt,int maximagecounter)
         ImageCounter++;
         if (ImageCounter >= maximagecounter)
         {
+            finishedanimationonce = true;
             ImageCounter = 0;
         }
     }
@@ -897,11 +941,11 @@ void SpawnZombiesWaves(float dt)
     if (canspawn)
     {
         canspawn = false;
-        for (int i = 0; i < 15; i++)
+        for (int i = 0; i < 1; i++)
         {
             Zombie newzombie;
             newzombie.shape.setSize(Vector2f(50, 50));
-            newzombie.shape.setPosition(globalcenter.x + (rand() / static_cast<float>(RAND_MAX) * 100), globalcenter.y + (rand() / static_cast<float>(RAND_MAX) * 100));            
+            newzombie.shape.setPosition(globalcenter.x + (rand() / static_cast<float>(RAND_MAX) * 1000), globalcenter.y + (rand() / static_cast<float>(RAND_MAX) * 1000));            
             newzombie.shape.setFillColor(Color::Red);
             newzombie.damage *= multiplier;
             newzombie.attack_fire_rate *= (1 / multiplier);
@@ -958,6 +1002,16 @@ void HandleZombieBehaviour(float dt)
                         zombies[i].shape.move(0, 1500 * dt);
                     }
                 }
+            }
+        }
+        if (knifed && zombies[i].shape.getGlobalBounds().intersects(test.getGlobalBounds()))
+        {
+            std::cout << "knifed" << std::endl;
+            zombies[i].health -= current_damage;
+            if (zombies[i].health <= 0)
+            {
+                zombies.erase(zombies.begin() + i);
+                break;
             }
         }
         for (int j = 0; j < zombies.size(); j++)
@@ -1047,6 +1101,10 @@ void Draw()
     {
         dasheline.clear();
     }
+    if (curr_state == state::death)
+    {
+        Player.setScale(6, 6);
+    }
     window.draw(Player);
     switch (Curr_Gun_state)
     {
@@ -1075,12 +1133,7 @@ void Draw()
         window.draw(ShotGun_S);
         break;
     }
-    test.setFillColor(Color::Green);
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
-    if (knifed)
-    {
-        window.draw(test);
-    }
     window.display();
 }
 
