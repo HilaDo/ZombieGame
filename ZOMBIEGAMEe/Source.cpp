@@ -68,12 +68,14 @@ struct bullet
     Vector2f currentvelocity;
     float maxvelocity = 5000.0f;
     float damage;
+    int id;
 };
 struct Zombie
 {
     RectangleShape shape;
     bool atkready = true;
     Vector2f currentvelocity;
+    int last_hit_bullet_id = -1;
     float maxvelocity = 1000;
     float damage = 5;
     float attack_fire_rate = 1;
@@ -82,7 +84,7 @@ struct Zombie
     float animation_duration = 0.25f;
     int imagecounter = 0;
     int numberofframes = 8;
-    int health = 30;
+    int health = 100;
     float distance_from_player;
     void Zombie_Behaviour(Vector2f player_pos,float dt)
     {
@@ -147,6 +149,8 @@ void Draw(); // the main drawing function where everything gets drawn on screen
 CircleShape test(15);
 Vector2i center;
 Vector2f globalcenter;
+
+unsigned long long numberoftotalbulletsshot = 0;
 
 //all sprites in the game
 Sprite Player;
@@ -690,10 +694,12 @@ void Shooting(float dt)
                 case Shotgun:newbullet.shape.setPosition(test.getPosition());
                     break;
                 }
+                newbullet.id = numberoftotalbulletsshot;
                 Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
                 newbullet.currentvelocity = newbullet.maxvelocity * (Norm_dir_vector + (Offset * 0.2f * current_spread));
                 newbullet.damage = current_damage;
                 bullets.push_back(newbullet);
+                numberoftotalbulletsshot++;
             }
             *current_ammo -= 1;
             fire_rate_counter = 0;
@@ -730,7 +736,7 @@ void Shooting(float dt)
             }
 
         }
-        std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
+        //std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
     } 
 }
 void Bullet_Movement_Collision(float dt)
@@ -751,15 +757,15 @@ void Bullet_Movement_Collision(float dt)
     {
         for (int j = 0; j < zombies.size(); j++)
         {
-            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()))
+            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()) && zombies[j].last_hit_bullet_id != bullets[i].id)
             {
+                zombies[j].last_hit_bullet_id = bullets[i].id;
                 zombies[j].health -= bullets[i].damage;
-                bullets.erase(bullets.begin() + i);
+                zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 10, bullets[i].currentvelocity.y * dt * 10);
                 if (zombies[j].health <= 0)
                 {
                     zombies.erase(zombies.begin() + j);
                 }
-                break;
             }
 
         }
