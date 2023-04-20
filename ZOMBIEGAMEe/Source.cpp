@@ -8,7 +8,6 @@
 //to be displayed on ui
 int Player_Health = 10000;
 int Score;
-int Wave_Number;
 int Money;
 
 
@@ -64,11 +63,28 @@ enum Gun_State
 Gun_State Curr_Gun_state = Gun_State::Sword;
 struct bullet
 {
-    CircleShape shape;
+    Sprite shape;
     Vector2f currentvelocity;
     float maxvelocity = 5000.0f;
     float damage;
     int id;
+    float animation_counter = 0;
+    float animation_switch_time = 0.1f;
+    int bullet_image_counter = 0;
+    void animation(float dt,Texture bulletanimation[])
+    {
+        animation_counter += dt;
+        if (animation_counter >= animation_switch_time)
+        {
+            bullet_image_counter++;
+            animation_counter = 0;
+            if (bullet_image_counter > 5)
+            {
+                bullet_image_counter = 0;
+            }
+        }
+        shape.setTexture(bulletanimation[bullet_image_counter]);
+    }
 };
 bool ishit = false;
 struct Zombie
@@ -205,6 +221,8 @@ Texture SMG_Reload_Animations[16];
 
 Texture shotgun_shoot_animation[14];
 Texture shotgun_reload_animation[14];
+
+Texture bullet_animation[5];
 
 Texture zombie_walk_animation[8];
 
@@ -346,13 +364,17 @@ void GetTextures()
     {
         DeathAnimation[i].loadFromFile("anim by rows/death/tile (" + std::to_string(i) + ").png");
     }
+    for (int i = 0; i < 5; i++)
+    {
+        bullet_animation[i].loadFromFile("guns/bullet animation/tile" + std::to_string(i) + ".png");
+    }
     for (int i = 0; i < 12; i++)
     {
         pistol_shoot_animations[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/shooting/tile" + std::to_string(i) + ".png");
     }
     for (int i = 0; i < 26; i++)
     {
-        pistol_reload_animation[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/reload/frame (" + std::to_string(i) + ").png");
+        pistol_reload_animation[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/reload/tile" + std::to_string(i) + ".png");
     }
     for (int i = 0; i < 16; i++)
     {
@@ -376,7 +398,7 @@ void GetTextures()
     }
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
-    Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 - 17, Pistol_S.getLocalBounds().height / 2);
+    Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
 }
 //update function
 void Update(float dt)
@@ -385,8 +407,7 @@ void Update(float dt)
     Switch_States(dt);
     
     if (curr_state != state::death)
-    {
-        std::cout << Player_Health << std::endl;
+    {        
         current_player_pos = DashOrigin.getPosition();
         Vector2i pixelpos = Mouse::getPosition(window);
         MousePos = window.mapPixelToCoords(pixelpos);
@@ -727,8 +748,6 @@ void Shooting(float dt)
             for (int i = 0; i < current_bullets_per_shot; i++)
             {
                 bullet newbullet;
-                newbullet.shape.setFillColor(Color::Magenta);
-                newbullet.shape.setRadius(10.f);
                 switch (Curr_Gun_state)
                 {
                 case Pistol: newbullet.shape.setPosition(test.getPosition());
@@ -748,10 +767,12 @@ void Shooting(float dt)
             *current_ammo -= 1;
             fire_rate_counter = 0;
         }
-        if ((Keyboard::isKeyPressed(Keyboard::R) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
+        if ((*current_ammo <=0 ||(Keyboard::isKeyPressed(Keyboard::R)) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
         {
+            std::cout << gun_image_counter << std::endl;
             if (!isreloading)
             {
+                gun_image_counter = 0;
                 if (Curr_Gun_state != Gun_State::Shotgun)
                 {
                     *current_ammo_stock += *current_ammo;
@@ -788,6 +809,8 @@ void Bullet_Movement_Collision(float dt)
     for (int i = 0; i < bullets.size(); i++)
     {
         bullets[i].shape.move(bullets[i].currentvelocity * dt);
+        bullets[i].animation(dt, bullet_animation);
+        bullets[i].shape.setScale(2, 2);
         for (int k = 0; k < Wall_Bounds.size(); k++)
         {
             if (bullets[i].shape.getGlobalBounds().intersects(Wall_Bounds[k]))
@@ -808,6 +831,7 @@ void Bullet_Movement_Collision(float dt)
                 zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 10, bullets[i].currentvelocity.y * dt * 10);
                 if (zombies[j].health <= 0)
                 {
+
                     zombies.erase(zombies.begin() + j);
                 }
             }
@@ -941,7 +965,7 @@ void SpawnZombiesWaves(float dt)
     if (canspawn)
     {
         canspawn = false;
-        for (int i = 0; i < 1; i++)
+        for (int i = 0; i < 30; i++)
         {
             Zombie newzombie;
             newzombie.shape.setSize(Vector2f(50, 50));
