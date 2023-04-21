@@ -4,12 +4,14 @@
 #include <sstream>
 #include <string>
 
-
+using namespace std;
 //to be displayed on ui
 int Player_Health = 10000;
 int Score;
 int Wave_Number;
 int Money;
+int coins = 0;
+int score = 0;
 
 
 #define pi 3.14159265
@@ -1134,6 +1136,28 @@ void Draw()
         break;
     }
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
+   
+    
+    /*{  to draw score and coins title }*/
+    Font font;
+    font.loadFromFile("GROBOLD.ttf");
+    Text text ,text2;
+    text.setFont(font); // select the font 
+    text.setString(" Score "+ to_string (score));
+    text.setCharacterSize(36);
+    text.setFillColor(sf::Color(155, 215, 0));
+    text.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+
+    //score
+    text2.setFont(font); // select the font 
+    text2.setString(" Money : " + to_string(coins));
+    text2.setCharacterSize(36);
+    text2.setFillColor(sf::Color(155, 215, 0));
+    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 25)));
+    
+    window.draw(text);
+    window.draw(text2);
+    /*{end   to draw score and coins title }*/
     window.display();
 }
 
