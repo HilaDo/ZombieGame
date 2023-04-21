@@ -9,8 +9,13 @@ using namespace std;
 int Player_Health = 10000;
 int Score;
 int Money;
-int coins = 0;
+int coins = 11100;
 int score = 0;
+
+
+//buying weapon
+bool pistol_buy = false, smg_buy = false, shotgun_buy = false;
+int const money_pistol = 100, money_smg = 1000, money_shotgun = 10000;
 
 
 #define pi 3.14159265
@@ -152,6 +157,7 @@ void AddDashLineVertexes(); // function that calculates the verticies of the das
 void draw_dash_line(); // function to draw the dash effect behind the player
 
 void calculate_shoot_dir(); // function that calculates the normal direction between the player and the current mouse position
+void buying_weapons(); //function that  open guns for player 
 void select_guns(); // function that switches between guns
 void knife(float dt);
 void Switch_Current_Gun_Attributes(float dt); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
@@ -180,6 +186,9 @@ Sprite Pistol_S;
 Sprite SMG_S;
 Sprite ShotGun_S;
 Sprite Sword_S;
+Sprite pistol_buying;
+Sprite smg_buying;
+Sprite shotgun_buying;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(800, 600), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
@@ -227,6 +236,9 @@ Texture shotgun_reload_animation[14];
 Texture bullet_animation[5];
 
 Texture zombie_walk_animation[8];
+Texture pistol_photo;
+Texture smg_photo;
+Texture shotgun_photo;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -422,6 +434,7 @@ void Update(float dt)
         HandleZombieBehaviour(dt);
 
         calculate_shoot_dir();
+        buying_weapons();
         select_guns();
         Switch_Current_Gun_Attributes(dt);
         knife(dt);
@@ -655,21 +668,21 @@ void select_guns()
         fire_rate_counter = 100;
         trigger = true;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Num2))
+    if (Keyboard::isKeyPressed(Keyboard::Num2) && pistol_buy)   
     {
         Curr_Gun_state = Gun_State::Pistol;
         gun_switch_delay_counter = current_fire_rate;
         fire_rate_counter = 100;
         trigger = true;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Num3))
+    if (Keyboard::isKeyPressed(Keyboard::Num3) && smg_buy)
     {
         Curr_Gun_state = Gun_State::Smg;
         gun_switch_delay_counter = current_fire_rate;
         fire_rate_counter = 100;
         trigger = true;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Num4))
+    if (Keyboard::isKeyPressed(Keyboard::Num4) && shotgun_buy)
     {
         Curr_Gun_state = Gun_State::Shotgun;
         gun_switch_delay_counter = current_fire_rate;
@@ -1161,10 +1174,10 @@ void Draw()
     }
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
    
-    
+    // tamer 
     /*{  to draw score and coins title }*/
     Font font;
-    font.loadFromFile("GROBOLD.ttf");
+    font.loadFromFile("font of score and money.ttf");
     Text text ,text2;
     text.setFont(font); // select the font 
     text.setString(" Score "+ to_string (score));
@@ -1177,17 +1190,48 @@ void Draw()
     text2.setString(" Money : " + to_string(coins));
     text2.setCharacterSize(36);
     text2.setFillColor(sf::Color(155, 215, 0));
-    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 25)));
+    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 30)));
     
     window.draw(text);
     window.draw(text2);
     /*{end   to draw score and coins title }*/
+    /* to draw guns */
+    /*pistol*/
+    pistol_photo.loadFromFile("pistol.png");
+    pistol_buying.setTexture(pistol_photo);
+    pistol_buying.setPosition(Vector2f(150,500));
+    if (!pistol_buy)
+    window.draw(pistol_buying);
+    /*smg*/
+    smg_photo.loadFromFile("smg.png");
+    smg_buying.setTexture(smg_photo);
+    smg_buying.setPosition(Vector2f(350, 500));
+    if (!smg_buy)
+        window.draw(smg_buying);
+    /* shotgun */
+    shotgun_photo.loadFromFile("shotgun.png");
+    shotgun_buying.setTexture(shotgun_photo);
+    shotgun_buying.setPosition(Vector2f(150, 600));
+    if (!shotgun_buy)
+        window.draw(shotgun_buying);
+    /* end tamer task */
     window.display();
 }
-
-
-
-
-
-
-
+void buying_weapons()
+{
+    if (Player.getGlobalBounds().intersects(pistol_buying.getGlobalBounds()) && coins >= money_pistol && !pistol_buy)
+    {
+        coins -= money_pistol;
+        pistol_buy = true;
+    }
+    if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()) && coins >= money_smg && !smg_buy)
+    {
+        coins -= money_smg;
+        smg_buy = true;
+    }
+    if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()) && coins >= money_shotgun && !shotgun_buy)
+    {
+        coins -= money_shotgun;
+        shotgun_buy = true;
+    }
+}

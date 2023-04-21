@@ -1,6 +1,6 @@
 ﻿  Source.cpp
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(126,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(300,72): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(133,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(314,72): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
           with
           [
               T=unsigned int
@@ -9,7 +9,7 @@ E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(300,72): warning C424
           [
               T=float
           ]
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(300,52): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(314,52): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
           with
           [
               T=unsigned int
@@ -18,14 +18,14 @@ E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(300,52): warning C424
           [
               T=float
           ]
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(343,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(343,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(643,20): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(760,32): warning C4244: '=': conversion from 'unsigned __int64' to 'int', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(830,48): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(1034,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(1107,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(1107,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(1160,107): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-E:\SFML Games\2D-Zombies\ZombieGame\ZOMBIEGAMEe\Source.cpp(1160,45): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-  ZOMBIEGAMEe.vcxproj -> E:\SFML Games\2D-Zombies\ZombieGame\x64\Debug\ZOMBIEGAMEe.exe
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(357,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(357,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(658,20): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(775,32): warning C4244: '=': conversion from 'unsigned __int64' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(845,48): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1049,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1122,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1122,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1175,107): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1175,45): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+  ZOMBIEGAMEe.vcxproj -> D:\abdelrahman\game\ZombieGame\x64\Debug\ZOMBIEGAMEe.exe
