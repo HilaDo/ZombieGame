@@ -7,10 +7,8 @@
 using namespace std;
 //to be displayed on ui
 int Player_Health = 10000;
-int Score;
-int Money;
-int coins = 11100;
-int score = 0;
+int Score=19999999;
+int Money=11100;
 
 
 //buying weapon
@@ -189,6 +187,7 @@ Sprite Sword_S;
 Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
+Sprite full_health_bar, secand_health_bar, semi_full_health_bar, third_full_health_bar, emtey_health_bar;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(800, 600), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
@@ -236,9 +235,11 @@ Texture shotgun_reload_animation[14];
 Texture bullet_animation[5];
 
 Texture zombie_walk_animation[8];
+
 Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
+Texture full_health_bar_photo, secand_health_bar_photo, semi_full_health_bar_photo, third_full_health_bar_photo, emtey_health_bar_photo;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -1180,17 +1181,17 @@ void Draw()
     font.loadFromFile("font of score and money.ttf");
     Text text ,text2;
     text.setFont(font); // select the font 
-    text.setString(" Score "+ to_string (score));
+    text.setString(" Score "+ to_string (Score));
     text.setCharacterSize(36);
     text.setFillColor(sf::Color(155, 215, 0));
-    text.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+    text.setPosition(window.mapPixelToCoords(Vector2i(0, 36)));
 
     //score
     text2.setFont(font); // select the font 
-    text2.setString(" Money : " + to_string(coins));
+    text2.setString(" Money : " + to_string(Money));
     text2.setCharacterSize(36);
     text2.setFillColor(sf::Color(155, 215, 0));
-    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 30)));
+    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 68)));
     
     window.draw(text);
     window.draw(text2);
@@ -1214,24 +1215,67 @@ void Draw()
     shotgun_buying.setPosition(Vector2f(150, 600));
     if (!shotgun_buy)
         window.draw(shotgun_buying);
+    /*end draw guns */
+    /* health bar task */
+    if (Player_Health <= 10000 and Player_Health >= 8000)
+    {
+        full_health_bar_photo.loadFromFile("full_health_bars.png");
+        full_health_bar.setTexture(full_health_bar_photo);
+        full_health_bar.setScale(Vector2f(0.35,0.35));
+        full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0 , 0)));
+        window.draw(full_health_bar);
+    }
+    else if (Player_Health <=8000 && Player_Health >= 6000)
+    {
+        secand_health_bar_photo.loadFromFile("secand_full_health_bars.png");
+        secand_health_bar.setTexture(secand_health_bar_photo);
+        secand_health_bar.setScale(Vector2f(0.35, 0.35));
+        secand_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+        window.draw(secand_health_bar);
+    }
+    else if (Player_Health <= 6000 && Player_Health >= 4000)
+    {
+        semi_full_health_bar_photo.loadFromFile("semi_full_health_bar.png");
+        semi_full_health_bar.setTexture(semi_full_health_bar_photo);
+        semi_full_health_bar.setScale(Vector2f(0.35, 0.35));
+        semi_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+        window.draw(semi_full_health_bar);
+    }
+    else if (Player_Health <= 4000 && Player_Health >= 2000)
+    {
+        third_full_health_bar_photo.loadFromFile("third_full_health_bar.png");
+        third_full_health_bar.setTexture(third_full_health_bar_photo);
+        third_full_health_bar.setScale(Vector2f(0.35, 0.35));
+        third_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+        window.draw(third_full_health_bar);
+    }
+    else 
+    {
+        emtey_health_bar_photo.loadFromFile("emtey_health_bar.png");
+        emtey_health_bar.setTexture(emtey_health_bar_photo);
+        emtey_health_bar.setScale(Vector2f(0.35, 0.35));
+        emtey_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+        window.draw(emtey_health_bar);
+    }
     /* end tamer task */
     window.display();
 }
+
 void buying_weapons()
 {
-    if (Player.getGlobalBounds().intersects(pistol_buying.getGlobalBounds()) && coins >= money_pistol && !pistol_buy)
+    if (Player.getGlobalBounds().intersects(pistol_buying.getGlobalBounds()) && Money >= money_pistol && !pistol_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
-        coins -= money_pistol;
+        Money -= money_pistol;
         pistol_buy = true;
     }
-    if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()) && coins >= money_smg && !smg_buy)
+    if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()) && Money >= money_smg && !smg_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
-        coins -= money_smg;
+        Money -= money_smg;
         smg_buy = true;
     }
-    if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()) && coins >= money_shotgun && !shotgun_buy)
+    if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()) && Money >= money_shotgun && !shotgun_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
-        coins -= money_shotgun;
+        Money -= money_shotgun;
         shotgun_buy = true;
     }
 }
