@@ -95,6 +95,8 @@ struct bullet
     }
 };
 bool ishit = false;
+Texture Health_Texture;
+vector<Sprite> HealthPacks;
 struct Zombie
 {
     RectangleShape shape;
@@ -422,6 +424,7 @@ void GetTextures()
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
+    Health_Texture.loadFromFile("health-red_32px.png");
 
     speedmachine_photo.loadFromFile("speedvanding.png");
     reloadmachine_photo.loadFromFile("ReloadVanding.png");
@@ -436,7 +439,8 @@ void Update(float dt)
     Switch_States(dt);
     
     if (curr_state != state::death)
-    {        
+    {  
+        cout << Player_Health << endl;
         current_player_pos = DashOrigin.getPosition();
         Vector2i pixelpos = Mouse::getPosition(window);
         MousePos = window.mapPixelToCoords(pixelpos);
@@ -461,8 +465,6 @@ void Update(float dt)
 
         previous_player_pos = current_player_pos;
         //vanding
-        std::cout << playerspeed << endl;
-
     }
 
 }
@@ -563,15 +565,25 @@ void Player_Collision(float dt)
             }
         }
     }
+
+    for (int i = 0; i < HealthPacks.size(); i++)
+    {
+        if (Player.getGlobalBounds().intersects(HealthPacks[i].getGlobalBounds()))
+        {
+            Player_Health += 20;
+            HealthPacks.erase(HealthPacks.begin() + i);
+        }
+    }
     //vandingmachine
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds())&& Money>=speedmoney && speed_pow==false&& Keyboard::isKeyPressed(Keyboard::Key::E)) {
         playerspeed *= 2;
+        speedmulti = 2;
         Money -= speedmoney;
         speed_pow = true;
     }
 
     if (Player.getGlobalBounds().intersects(reloadmachine.getGlobalBounds()) && Money >= reloadmoney && reload_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
-        current_reload_time *= 0.5;
+        reloadmulti = 0.5f;
         Money -= reloadmoney;
         reload_pow = true;
     }
@@ -643,7 +655,7 @@ void Dashing(float dt)
         if (timesincedash > 0.05f)
         {
             isdashing = false;
-            playerspeed = 500;
+            playerspeed = 500 * speedmulti;
             timesincedash = 0;
         }
     }
@@ -749,7 +761,7 @@ void Switch_Current_Gun_Attributes(float dt)
         current_ammo = &pistolbulletsloaded;
         current_ammo_stock = &pistolammostock;
         current_clip_size = pistolclipsize;
-        current_reload_time = pistolreloadtime;
+        current_reload_time = pistolreloadtime * reloadmulti;
         current_bullets_loaded_per_reload = Pistol_bullets_loaded_per_reload;
         camera_shake_magnitude = 3;
         break;
@@ -761,7 +773,7 @@ void Switch_Current_Gun_Attributes(float dt)
         current_ammo = &riflebulletsloaded;
         current_ammo_stock = &rifleammostock;
         current_clip_size = rifleclipsize;
-        current_reload_time = riflereloadtime;
+        current_reload_time = riflereloadtime * reloadmulti;
         current_bullets_loaded_per_reload = Rifle_bullets_loaded_per_reload;
         camera_shake_magnitude = 3;
         break;
@@ -773,7 +785,7 @@ void Switch_Current_Gun_Attributes(float dt)
         current_ammo = &shotgunbulletsloaded;
         current_ammo_stock = &shotgunammostock;
         current_clip_size = shotgunclipsize;
-        current_reload_time = shotgunreloadtime;
+        current_reload_time = shotgunreloadtime * reloadmulti;
         current_bullets_loaded_per_reload = ShotGun_bullets_loaded_per_reload;
         camera_shake_magnitude = 7;
         break;
@@ -878,7 +890,10 @@ void Bullet_Movement_Collision(float dt)
                 zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 10, bullets[i].currentvelocity.y * dt * 10);
                 if (zombies[j].health <= 0)
                 {
-
+                    Sprite newhealthpack;
+                    newhealthpack.setTexture(Health_Texture);
+                    newhealthpack.setPosition(zombies[j].shape.getPosition());
+                    HealthPacks.push_back(newhealthpack);
                     zombies.erase(zombies.begin() + j);
                 }
             }
@@ -1012,7 +1027,7 @@ void SpawnZombiesWaves(float dt)
     if (canspawn)
     {
         canspawn = false;
-        for (int i = 0; i < 30; i++)
+        for (int i = 0; i < 2; i++)
         {
             Zombie newzombie;
             newzombie.shape.setSize(Vector2f(50, 50));
@@ -1205,7 +1220,10 @@ void Draw()
         break;
     }
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
-   
+    for (int i = 0; i < HealthPacks.size(); i++)
+    {
+        window.draw(HealthPacks[i]);
+    }
     // tamer 
     /*{  to draw score and coins title }*/
     Font font;
@@ -1250,7 +1268,7 @@ void Draw()
     /* health bar task */
     if (Player_Health <= 10000 and Player_Health >= 8000)
     {
-        full_health_bar_photo.loadFromFile("full_health_bars.png");
+       // full_health_bar_photo.loadFromFile("full_health_bars.png");
         full_health_bar.setTexture(full_health_bar_photo);
         full_health_bar.setScale(Vector2f(0.35,0.35));
         full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0 , 0)));
@@ -1258,7 +1276,7 @@ void Draw()
     }
     else if (Player_Health <=8000 && Player_Health >= 6000)
     {
-        secand_health_bar_photo.loadFromFile("secand_full_health_bars.png");
+        //secand_health_bar_photo.loadFromFile("secand_full_health_bars.png");
         secand_health_bar.setTexture(secand_health_bar_photo);
         secand_health_bar.setScale(Vector2f(0.35, 0.35));
         secand_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
@@ -1266,7 +1284,7 @@ void Draw()
     }
     else if (Player_Health <= 6000 && Player_Health >= 4000)
     {
-        semi_full_health_bar_photo.loadFromFile("semi_full_health_bar.png");
+        //semi_full_health_bar_photo.loadFromFile("semi_full_health_bar.png");
         semi_full_health_bar.setTexture(semi_full_health_bar_photo);
         semi_full_health_bar.setScale(Vector2f(0.35, 0.35));
         semi_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
@@ -1274,7 +1292,7 @@ void Draw()
     }
     else if (Player_Health <= 4000 && Player_Health >= 2000)
     {
-        third_full_health_bar_photo.loadFromFile("third_full_health_bar.png");
+       // third_full_health_bar_photo.loadFromFile("third_full_health_bar.png");
         third_full_health_bar.setTexture(third_full_health_bar_photo);
         third_full_health_bar.setScale(Vector2f(0.35, 0.35));
         third_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
