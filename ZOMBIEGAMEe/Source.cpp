@@ -3,6 +3,7 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <iomanip>
 
 using namespace std;
 //to be displayed on ui
@@ -187,7 +188,7 @@ Sprite Sword_S;
 Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
-Sprite full_health_bar, secand_health_bar, semi_full_health_bar, third_full_health_bar, emtey_health_bar;
+Sprite full_heart;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(800, 600), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
@@ -239,8 +240,7 @@ Texture zombie_walk_animation[8];
 Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
-Texture full_health_bar_photo, secand_health_bar_photo, semi_full_health_bar_photo, third_full_health_bar_photo, emtey_health_bar_photo;
-
+Texture full_heart_photo;
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
 float reload_time_counter = 0;
@@ -1176,26 +1176,92 @@ void Draw()
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
    
     // tamer 
-    /*{  to draw score and coins title }*/
-    Font font;
-    font.loadFromFile("font of score and money.ttf");
-    Text text ,text2;
-    text.setFont(font); // select the font 
-    text.setString(" Score "+ to_string (Score));
-    text.setCharacterSize(36);
-    text.setFillColor(sf::Color(155, 215, 0));
-    text.setPosition(window.mapPixelToCoords(Vector2i(0, 36)));
+    //{ health bar }
+    RectangleShape health_bar_background(Vector2f(190, 22));
+    health_bar_background.setFillColor(sf::Color::Black);
+    health_bar_background.setPosition(window.mapPixelToCoords(Vector2i(15, 6)));
+    window.draw(health_bar_background);
+  
 
+    RectangleShape health_bar(Vector2f(180, 12.5));
+    health_bar.setScale(Vector2f((Player_Health/ 10000.00),1));
+    if ((Player_Health * 100 / 10000.00) >= 30)
+
+    {
+        health_bar.setFillColor(Color::Green);
+    }
+    else
+    {
+        health_bar.setFillColor(Color::Red);
+    }
+    health_bar.setPosition(window.mapPixelToCoords(Vector2i(20, 11)));
+    window.draw(health_bar);
+      
+  
+    // { to  draw heart next to health bar }
+    full_heart_photo.loadFromFile("full_heart.png");
+    full_heart.setTexture(full_heart_photo);
+    full_heart.setScale(Vector2f(0.07,0.07 ));
+    full_heart.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
+    window.draw(full_heart);
+
+    Texture money_photo;
+    Sprite money;
+    money_photo.loadFromFile("money.png");
+    money.setTexture(money_photo);
+    money.setScale(Vector2f(0.8,0.8));
+    money.setScale(Vector2f(0.07, 0.07));
+    money.setPosition(window.mapPixelToCoords(Vector2i(0, 67)));
+    window.draw(money);
+    /*{  to draw score and coins title and health percent text  }*/
+    Font font1,font2;
+    font1.loadFromFile("font of score and money.ttf");
+    font2.loadFromFile("font of current wave.ttf");
+    Text score_text ,money_text,health_precent_text,precent_sign,current_wave;
     //score
-    text2.setFont(font); // select the font 
-    text2.setString(" Money : " + to_string(Money));
-    text2.setCharacterSize(36);
-    text2.setFillColor(sf::Color(155, 215, 0));
-    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 68)));
+    score_text.setFont(font1); // select the font 
+    score_text.setString(" Score : "+ to_string (Score));
+    score_text.setCharacterSize(36);
+    score_text.setFillColor(sf::Color(155, 215, 0));
+    score_text.setPosition(window.mapPixelToCoords(Vector2i(0, 30)));
+    window.draw(score_text);
+
+    //money
+    money_text.setFont(font1); // select the font 
+    money_text.setString( " : " + to_string(Money));
+    money_text.setCharacterSize(36);
+    money_text.setFillColor(sf::Color(255, 215, 0));
+    money_text.setPosition(window.mapPixelToCoords(Vector2i(60, 70)));
+    window.draw(money_text);
+   // health percent
     
-    window.draw(text);
-    window.draw(text2);
-    /*{end   to draw score and coins title }*/
+    health_precent_text.setFont(font1); // select the font 
+    health_precent_text.setString(to_string(Player_Health * 100 / 10000));
+    health_precent_text.setCharacterSize(12);
+    health_precent_text.setFillColor(Color::White);
+    health_precent_text.setPosition(window.mapPixelToCoords(Vector2i(100, 11)));
+    if (Player_Health>=0)
+    window.draw(health_precent_text);
+     // to print  { % }
+    precent_sign.setFont(font1); // select the font 
+    precent_sign.setString(" % ");
+    precent_sign.setCharacterSize(12);
+    precent_sign.setFillColor(Color::White);
+    precent_sign.setPosition(window.mapPixelToCoords(Vector2i(108, 11)));
+    if (Player_Health >= 0)
+    window.draw(precent_sign);
+
+
+    // to print  { current wave  }
+ 
+    current_wave.setFont(font2);  
+    current_wave.setString(" Current wave \n\t\t    " + to_string (Current_Wave1));
+    current_wave.setCharacterSize(16);
+   current_wave.setFillColor(sf::Color(136, 8, 8));
+    current_wave.setPosition(window.mapPixelToCoords(Vector2i(600, 0)));
+        window.draw(current_wave);
+
+    /*{end   to draw score and coins title and health percent }*/
     /* to draw guns */
     /*pistol*/
     pistol_photo.loadFromFile("pistol.png");
@@ -1215,49 +1281,9 @@ void Draw()
     shotgun_buying.setPosition(Vector2f(150, 600));
     if (!shotgun_buy)
         window.draw(shotgun_buying);
-    /*end draw guns */
-    /* health bar task */
-    if (Player_Health <= 10000 and Player_Health >= 8000)
-    {
-        full_health_bar_photo.loadFromFile("full_health_bars.png");
-        full_health_bar.setTexture(full_health_bar_photo);
-        full_health_bar.setScale(Vector2f(0.35,0.35));
-        full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0 , 0)));
-        window.draw(full_health_bar);
-    }
-    else if (Player_Health <=8000 && Player_Health >= 6000)
-    {
-        secand_health_bar_photo.loadFromFile("secand_full_health_bars.png");
-        secand_health_bar.setTexture(secand_health_bar_photo);
-        secand_health_bar.setScale(Vector2f(0.35, 0.35));
-        secand_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(secand_health_bar);
-    }
-    else if (Player_Health <= 6000 && Player_Health >= 4000)
-    {
-        semi_full_health_bar_photo.loadFromFile("semi_full_health_bar.png");
-        semi_full_health_bar.setTexture(semi_full_health_bar_photo);
-        semi_full_health_bar.setScale(Vector2f(0.35, 0.35));
-        semi_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(semi_full_health_bar);
-    }
-    else if (Player_Health <= 4000 && Player_Health >= 2000)
-    {
-        third_full_health_bar_photo.loadFromFile("third_full_health_bar.png");
-        third_full_health_bar.setTexture(third_full_health_bar_photo);
-        third_full_health_bar.setScale(Vector2f(0.35, 0.35));
-        third_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(third_full_health_bar);
-    }
-    else 
-    {
-        emtey_health_bar_photo.loadFromFile("emtey_health_bar.png");
-        emtey_health_bar.setTexture(emtey_health_bar_photo);
-        emtey_health_bar.setScale(Vector2f(0.35, 0.35));
-        emtey_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(emtey_health_bar);
-    }
-    /* end tamer task */
+    //end draw guns 
+    
+    /* end tamer task*/
     window.display();
 }
 
