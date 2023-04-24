@@ -42,7 +42,7 @@ int pistolbulletsloaded = pistolclipsize;
 #define rifleclipsize 30
 #define riflereloadtime 1
 #define Rifle_bullets_loaded_per_reload rifleclipsize
-int rifleammostock = 999999999;
+int rifleammostock = 500;
 int riflebulletsloaded = rifleclipsize;
 
 #define shotgunfirerate 0.7f
@@ -52,7 +52,7 @@ int riflebulletsloaded = rifleclipsize;
 #define shotgunclipsize 8
 #define shotgunreloadtime 1
 #define ShotGun_bullets_loaded_per_reload 1
-int shotgunammostock = 10000;
+int shotgunammostock = 1000;
 int shotgunbulletsloaded = shotgunclipsize;
 
 using namespace sf;
@@ -189,8 +189,9 @@ Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
 Sprite full_heart;
+Sprite money;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(800, 600), "ZombieGame");
+RenderWindow window(VideoMode(800, 600), "Zombie Game");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
 RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
@@ -241,6 +242,7 @@ Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
 Texture full_heart_photo;
+Texture money_photo;
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
 float reload_time_counter = 0;
@@ -1176,7 +1178,19 @@ void Draw()
     test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
    
     // tamer 
-    //{ health bar }
+    Font normal_font;
+    Font blood_font;
+    normal_font.loadFromFile("font of score and money.ttf");
+    blood_font.loadFromFile("font of current wave.ttf"); // to load font files 
+    Text score_text;
+    Text money_text;
+    Text health_precent_text;
+    Text precent_sign;  // declear all text ui 
+    Text current_wave;
+    Text current_ammo_text;
+    Text ammo_stock_text;
+    //{ health bar } 
+
     RectangleShape health_bar_background(Vector2f(190, 22));
     health_bar_background.setFillColor(sf::Color::Black);
     health_bar_background.setPosition(window.mapPixelToCoords(Vector2i(15, 6)));
@@ -1198,52 +1212,26 @@ void Draw()
     window.draw(health_bar);
       
   
-    // { to  draw heart next to health bar }
+    //  to  draw heart next to health bar 
     full_heart_photo.loadFromFile("full_heart.png");
     full_heart.setTexture(full_heart_photo);
     full_heart.setScale(Vector2f(0.07,0.07 ));
     full_heart.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
     window.draw(full_heart);
 
-    Texture money_photo;
-    Sprite money;
-    money_photo.loadFromFile("money.png");
-    money.setTexture(money_photo);
-    money.setScale(Vector2f(0.8,0.8));
-    money.setScale(Vector2f(0.07, 0.07));
-    money.setPosition(window.mapPixelToCoords(Vector2i(0, 67)));
-    window.draw(money);
-    /*{  to draw score and coins title and health percent text  }*/
-    Font font1,font2;
-    font1.loadFromFile("font of score and money.ttf");
-    font2.loadFromFile("font of current wave.ttf");
-    Text score_text ,money_text,health_precent_text,precent_sign,current_wave;
-    //score
-    score_text.setFont(font1); // select the font 
-    score_text.setString(" Score : "+ to_string (Score));
-    score_text.setCharacterSize(36);
-    score_text.setFillColor(sf::Color(155, 215, 0));
-    score_text.setPosition(window.mapPixelToCoords(Vector2i(0, 30)));
-    window.draw(score_text);
+   // to print health percent text 
 
-    //money
-    money_text.setFont(font1); // select the font 
-    money_text.setString( " : " + to_string(Money));
-    money_text.setCharacterSize(36);
-    money_text.setFillColor(sf::Color(255, 215, 0));
-    money_text.setPosition(window.mapPixelToCoords(Vector2i(60, 70)));
-    window.draw(money_text);
-   // health percent
-    
-    health_precent_text.setFont(font1); // select the font 
+    health_precent_text.setFont(normal_font); // select the font 
     health_precent_text.setString(to_string(Player_Health * 100 / 10000));
     health_precent_text.setCharacterSize(12);
     health_precent_text.setFillColor(Color::White);
     health_precent_text.setPosition(window.mapPixelToCoords(Vector2i(100, 11)));
     if (Player_Health>=0)
     window.draw(health_precent_text);
+
      // to print  { % }
-    precent_sign.setFont(font1); // select the font 
+
+    precent_sign.setFont(normal_font); // select the font 
     precent_sign.setString(" % ");
     precent_sign.setCharacterSize(12);
     precent_sign.setFillColor(Color::White);
@@ -1251,39 +1239,139 @@ void Draw()
     if (Player_Health >= 0)
     window.draw(precent_sign);
 
+  //to draw money photo
 
-    // to print  { current wave  }
- 
-    current_wave.setFont(font2);  
+    money_photo.loadFromFile("money.png");
+    money.setTexture(money_photo);
+    money.setScale(Vector2f(0.8,0.8));
+    money.setScale(Vector2f(0.07, 0.07));
+    money.setPosition(window.mapPixelToCoords(Vector2i(0, 480)));
+    window.draw(money);
+
+    //{  to draw score and coins title and health percent text  }
+    
+    //score
+
+    score_text.setFont(blood_font); // select the font 
+    score_text.setString("Score : "+ to_string (Score));
+    score_text.setCharacterSize(36);
+    score_text.setFillColor(sf::Color(136, 8, 8));
+    score_text.setPosition(window.mapPixelToCoords(Vector2i(0, 540)));
+    window.draw(score_text);
+
+    // to print money number
+
+    money_text.setFont(normal_font); // select the font 
+    money_text.setString( " : " + to_string(Money));
+    money_text.setCharacterSize(36);
+    money_text.setFillColor(sf::Color(255, 215, 0));
+    money_text.setPosition(window.mapPixelToCoords(Vector2i(60, 490)));
+    window.draw(money_text);
+    // to print  current wave  
+
+    current_wave.setFont(blood_font);
     current_wave.setString(" Current wave \n\t\t    " + to_string (Current_Wave1));
-    current_wave.setCharacterSize(16);
-   current_wave.setFillColor(sf::Color(136, 8, 8));
-    current_wave.setPosition(window.mapPixelToCoords(Vector2i(600, 0)));
-        window.draw(current_wave);
+    current_wave.setCharacterSize(19);
+    current_wave.setFillColor(sf::Color(136, 8, 8));
+    current_wave.setPosition(window.mapPixelToCoords(Vector2i(340, 0)));
+    window.draw(current_wave);
 
-    /*{end   to draw score and coins title and health percent }*/
-    /* to draw guns */
-    /*pistol*/
+        // amo and amo stack
+
+        current_ammo_text.setFont(normal_font);
+        current_ammo_text.setString( to_string(*current_ammo));
+        current_ammo_text.setCharacterSize(22);
+        current_ammo_text.setFillColor(Color::Blue);
+        if (Curr_Gun_state == Gun_State::Smg)
+        {
+            current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(710, 577)));
+        }
+        else
+
+        {
+            current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(730, 577)));
+        }
+        if (Curr_Gun_state != Gun_State::Sword)
+        window.draw(current_ammo_text);
+
+       //{to print  amo stock text }
+
+        ammo_stock_text.setFont(normal_font);
+        if (Curr_Gun_state == Gun_State::Smg)
+        {
+            ammo_stock_text.setString("       /" + to_string(*current_ammo_stock));
+            ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(720, 587)));
+        }
+        else
+        {
+            ammo_stock_text.setString(" /" + to_string(*current_ammo_stock));
+            ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(740, 587)));
+        }
+        ammo_stock_text.setCharacterSize(12);
+        ammo_stock_text.setFillColor(Color::Blue);
+        
+        if (Curr_Gun_state != Gun_State::Sword)
+        window.draw(ammo_stock_text);
+        // to draw ammo next to text 
+        if (Curr_Gun_state == Gun_State::Pistol)
+        {
+            Texture ammo_pistol_photo;
+            Sprite ammo_pistol;
+            ammo_pistol_photo.loadFromFile("ammo_pistol.png");
+            ammo_pistol.setTexture(ammo_pistol_photo);
+            ammo_pistol.setPosition(window.mapPixelToCoords(Vector2i(772, 577)));
+            window.draw(ammo_pistol);
+        }
+        else if (Curr_Gun_state == Gun_State::Smg)
+        {
+            Texture ammo_smg_photo;
+            Sprite ammo_smg;
+            ammo_smg_photo.loadFromFile("ammo_smg.png");
+            ammo_smg.setTexture(ammo_smg_photo);
+            ammo_smg.setPosition(window.mapPixelToCoords(Vector2i(772, 577)));
+            window.draw(ammo_smg);
+        }
+        else if (Curr_Gun_state == Gun_State::Shotgun)
+        {
+            Texture ammo_shotgun_photo;
+            Sprite ammo_shotgun;
+            ammo_shotgun_photo.loadFromFile("ammo_shotgun.png");
+            ammo_shotgun.setTexture(ammo_shotgun_photo);
+            ammo_shotgun.setPosition(window.mapPixelToCoords(Vector2i(772, 577)));
+            window.draw(ammo_shotgun);
+        }
+
+    //{end  draw score , coins  and health percent }  ammo_stack_text 
+    
+    // to draw guns  on floor 
+
+    //pistol
     pistol_photo.loadFromFile("pistol.png");
     pistol_buying.setTexture(pistol_photo);
     pistol_buying.setPosition(Vector2f(150,500));
     if (!pistol_buy)
     window.draw(pistol_buying);
+
     /*smg*/
+
     smg_photo.loadFromFile("smg.png");
     smg_buying.setTexture(smg_photo);
     smg_buying.setPosition(Vector2f(350, 500));
     if (!smg_buy)
         window.draw(smg_buying);
+
     /* shotgun */
+
     shotgun_photo.loadFromFile("shotgun.png");
     shotgun_buying.setTexture(shotgun_photo);
     shotgun_buying.setPosition(Vector2f(150, 600));
     if (!shotgun_buy)
         window.draw(shotgun_buying);
-    //end draw guns 
+
+    //end draw guns on floor  
     
     /* end tamer task*/
+
     window.display();
 }
 

@@ -1,6 +1,6 @@
 ﻿  Source.cpp
 D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(132,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(315,72): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(317,72): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
           with
           [
               T=unsigned int
@@ -9,7 +9,7 @@ D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(315,72): warning C4244: 'a
           [
               T=float
           ]
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(315,52): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(317,52): warning C4244: 'argument': conversion from 'T' to 'T', possible loss of data
           with
           [
               T=unsigned int
@@ -18,32 +18,32 @@ D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(315,52): warning C4244: 'a
           [
               T=float
           ]
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(358,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(358,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(659,20): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(776,32): warning C4244: '=': conversion from 'unsigned __int64' to 'int', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(846,48): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1050,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1123,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1123,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1176,107): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1176,45): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1187,48): warning C4244: 'argument': conversion from 'double' to 'T', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(360,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(360,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(661,20): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(778,32): warning C4244: '=': conversion from 'unsigned __int64' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(848,48): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1052,34): warning C4244: '-=': conversion from 'float' to 'int', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1125,45): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1125,36): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1178,107): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1178,45): warning C4244: 'argument': conversion from 'double' to 'float', possible loss of data
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1201,48): warning C4244: 'argument': conversion from 'double' to 'T', possible loss of data
           with
           [
               T=float
           ]
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1204,44): warning C4305: 'argument': truncation from 'double' to 'T'
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1218,44): warning C4305: 'argument': truncation from 'double' to 'T'
           with
           [
               T=float
           ]
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1212,36): warning C4305: 'argument': truncation from 'double' to 'T'
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1246,36): warning C4305: 'argument': truncation from 'double' to 'T'
           with
           [
               T=float
           ]
-D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1213,39): warning C4305: 'argument': truncation from 'double' to 'T'
+D:\abdelrahman\game\ZombieGame\ZOMBIEGAMEe\Source.cpp(1247,39): warning C4305: 'argument': truncation from 'double' to 'T'
           with
           [
               T=float
