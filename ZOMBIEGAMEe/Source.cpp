@@ -9,10 +9,13 @@ using namespace std;
 int Player_Health = 10000;
 int Score=19999999;
 int Money=11100;
-
+int const speedmoney = 100;
+int const reloadmoney = 200;
+float speedmulti = 1;
+float reloadmulti = 1;
 
 //buying weapon
-bool pistol_buy = false, smg_buy = false, shotgun_buy = false;
+bool pistol_buy = false, smg_buy = false, shotgun_buy = false,speed_pow=false,reload_pow=false;
 int const money_pistol = 100, money_smg = 1000, money_shotgun = 10000;
 
 
@@ -188,6 +191,8 @@ Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
 Sprite full_health_bar, secand_health_bar, semi_full_health_bar, third_full_health_bar, emtey_health_bar;
+Sprite speedmachine;
+Sprite reloadmachine;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(800, 600), "ZombieGame");
 RectangleShape wall1(Vector2f(50.0, 10000.0));
@@ -240,6 +245,9 @@ Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
 Texture full_health_bar_photo, secand_health_bar_photo, semi_full_health_bar_photo, third_full_health_bar_photo, emtey_health_bar_photo;
+
+Texture speedmachine_photo;
+Texture reloadmachine_photo;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -414,6 +422,12 @@ void GetTextures()
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
+
+    speedmachine_photo.loadFromFile("speedvanding.png");
+    reloadmachine_photo.loadFromFile("ReloadVanding.png");
+    speedmachine.setTexture(speedmachine_photo);
+    reloadmachine.setTexture(reloadmachine_photo);
+
 }
 //update function
 void Update(float dt)
@@ -446,7 +460,11 @@ void Update(float dt)
         camera_shake(dt);
 
         previous_player_pos = current_player_pos;
+        //vanding
+        std::cout << playerspeed << endl;
+
     }
+
 }
 
 //Player-related functions
@@ -544,6 +562,18 @@ void Player_Collision(float dt)
                 }
             }
         }
+    }
+    //vandingmachine
+    if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds())&& Money>=speedmoney && speed_pow==false&& Keyboard::isKeyPressed(Keyboard::Key::E)) {
+        playerspeed *= 2;
+        Money -= speedmoney;
+        speed_pow = true;
+    }
+
+    if (Player.getGlobalBounds().intersects(reloadmachine.getGlobalBounds()) && Money >= reloadmoney && reload_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
+        current_reload_time *= 0.5;
+        Money -= reloadmoney;
+        reload_pow = true;
     }
 }
 void Switch_States(float dt)
@@ -748,6 +778,7 @@ void Switch_Current_Gun_Attributes(float dt)
         camera_shake_magnitude = 7;
         break;
     }
+    current_reload_time *= reloadmulti;
 }
 void Shooting(float dt)
 {
@@ -1145,7 +1176,7 @@ void Draw()
     {
         Player.setScale(6, 6);
     }
-    window.draw(Player);
+   
     switch (Curr_Gun_state)
     {
     case Sword:
@@ -1258,6 +1289,13 @@ void Draw()
         window.draw(emtey_health_bar);
     }
     /* end tamer task */
+
+    //vandingmachine
+    speedmachine.setPosition(Vector2f(250, 250));
+    reloadmachine.setPosition(Vector2f(700, 270));
+    window.draw(speedmachine);
+    window.draw(reloadmachine);
+    window.draw(Player);
     window.display();
 }
 
