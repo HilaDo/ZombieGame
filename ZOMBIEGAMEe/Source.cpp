@@ -6,24 +6,24 @@
 
 using namespace std;
 //to be displayed on ui
-int Player_Health = 10000;
-int Score=19999999;
-int Money=11100;
-int const speedmoney = 100;
-int const reloadmoney = 200;
+int Player_Health = 100;
+int Score= 0;
+int Money= 2500;
+int const speedmoney = 2000;
+int const reloadmoney = 2000;
 float speedmulti = 1;
 float reloadmulti = 1;
 
 //buying weapon
 bool pistol_buy = false, smg_buy = false, shotgun_buy = false,speed_pow=false,reload_pow=false;
-int const money_pistol = 100, money_smg = 1000, money_shotgun = 10000;
+int const money_pistol = 500, money_smg = 1000, money_shotgun = 1500;
 
 
 #define pi 3.14159265
 #define Level1NumWaves 3
 
 #define swordfirerate 0.3f
-#define sworddamage 5
+#define sworddamage 20
 
 
 
@@ -99,50 +99,112 @@ Texture Health_Texture;
 vector<Sprite> HealthPacks;
 struct Zombie
 {
-    RectangleShape shape;
+    Sprite shape;
     bool atkready = true;
     Vector2f currentvelocity;
     int last_hit_bullet_id = -1;
-    float maxvelocity = 1000;
-    float damage = 5;
+    float maxvelocity = 250;
+    float damage = 10;
     float attack_fire_rate = 1;
     float fire_rate_counter = 0;
     float animation_counter = 0;
     float animation_duration = 0.25f;
     int imagecounter = 0;
+
+    float Death_animation_counter = 0;
+    float Death_animation_duration = 0.25f;
+    int Death_imagecounter = 0;
+
+    float Hit_animation_counter = 0;
+    float Hit_animation_duration = 0.25f;
+    int Hit_imagecounter = 0;
+
     int numberofframes = 8;
-    int health = 20;
+    int health = 75;
+    int current_frames = 7;
     float distance_from_player;
-    void Zombie_Behaviour(Vector2f player_pos,float dt)
+    bool isdeath = false;
+    bool iszombiehit = false;
+    bool remove_zombie = false;
+    void Zombie_Behaviour(Vector2f player_pos,float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[])
     {
-        if (!atkready)
+        if (iszombiehit && !isdeath)
         {
-            fire_rate_counter += dt;
-            if (fire_rate_counter >= attack_fire_rate)
+            Hit_animation_counter += dt;
+            if (Hit_animation_counter >= Hit_animation_duration)
             {
-                atkready = true;
-                curr_state = state::hit;
-                fire_rate_counter = 0;
+                Hit_animation_counter = 0;
+                Hit_imagecounter++;
+                if (Hit_imagecounter >= 2)
+                {
+                    iszombiehit = false;
+                    Hit_imagecounter = 0;
+                }
+            }
+            shape.setTexture(hit_anim[Hit_imagecounter]);
+        }
+        else if (!isdeath && !iszombiehit)
+        {
+            animation_counter += dt;
+            if (animation_counter >= animation_duration)
+            {
+                animation_counter = 0;
+                imagecounter++;
+                if (imagecounter >= current_frames)
+                {
+                    imagecounter = 0;
+                }
+            }
+            if (!atkready)
+            {
+                fire_rate_counter += dt;
+                if (fire_rate_counter >= attack_fire_rate)
+                {
+                    atkready = true;
+                    fire_rate_counter = 0;
+                }
+            }
+            Vector2f Direction = player_pos - shape.getPosition();
+            float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
+            Vector2f norm_Direction = Direction / magnitude;
+            distance_from_player = magnitude;
+            if (distance_from_player <= 75.0f)
+            {
+                shape.setTexture(atk_anim[imagecounter]);
+                current_frames = 7;
+                if (atkready)
+                {
+                    Player_Health -= damage;
+                    ishit = true;
+                    atkready = false;
+                }
+            }
+            else
+            {
+                current_frames = 8;
+                shape.setTexture(walk_anim[imagecounter]);
+                currentvelocity = norm_Direction * maxvelocity;
+                shape.move(currentvelocity * dt);
             }
         }
-        Vector2f Direction = player_pos - shape.getPosition();
-        float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
-        Vector2f norm_Direction = Direction / magnitude;
-        distance_from_player = magnitude;
-        if (distance_from_player <= 150.0f)
+        else if (isdeath)
         {
-            if (atkready)
+            Death_animation_counter += dt;
+            if (Death_animation_counter >= Death_animation_duration)
             {
-                Player_Health -= damage;
-                ishit = true;
-                atkready = false;
+                
+                if (Death_imagecounter < 5)
+                {
+                    Death_imagecounter++;
+                }
+                if (Death_animation_counter >= 5)
+                {
+                    remove_zombie = true;
+                }
             }
+            shape.setTexture(death_anim[Death_imagecounter]);
         }
-        else
-        {
-            currentvelocity = norm_Direction * maxvelocity;
-            shape.move(currentvelocity * dt);
-        }
+        
     }
 };
 void init_walls(); // function to initilize walls at the start of the game
@@ -176,9 +238,10 @@ void HandleZombieBehaviour(float dt);
 
 void Draw(); // the main drawing function where everything gets drawn on screen
 
-CircleShape test(50);
+CircleShape test(10);
 Vector2i center;
 Vector2f globalcenter;
+Vector2f globalorigin;
 
 unsigned long long numberoftotalbulletsshot = 0;
 
@@ -195,8 +258,9 @@ Sprite shotgun_buying;
 Sprite full_health_bar, secand_health_bar, semi_full_health_bar, third_full_health_bar, emtey_health_bar;
 Sprite speedmachine;
 Sprite reloadmachine;
+Sprite Crosshair;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(800, 600), "ZombieGame");
+RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
 RectangleShape wall1(Vector2f(50.0, 10000.0));
 RectangleShape wall2(Vector2f(50.0, 10000.0));
 RectangleShape wall3(Vector2f(10000.0, 50.0));
@@ -220,7 +284,6 @@ bool iscamerashake = false;
 bool delayfinished = false;
 //wall bounds vector to detect collision
 std::vector <FloatRect> Wall_Bounds;
-std::vector <Zombie> zombies;
 
 //animation textures
 Texture WalkAnimation[8];
@@ -242,6 +305,11 @@ Texture shotgun_reload_animation[14];
 Texture bullet_animation[5];
 
 Texture zombie_walk_animation[8];
+Texture zombie_atk_animation[7];
+Texture zombie_hit_animation[2];
+Texture zombie_death_animation[6];
+
+Texture CrossHair_Texture;
 
 Texture pistol_photo;
 Texture smg_photo;
@@ -273,7 +341,7 @@ float hit_duration = 0.5f;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
-float x, y, playerspeed = 500.0;
+float x, y, playerspeed = 350.0;
 
 //current gun attributes
 int* current_ammo = &pistolbulletsloaded; // ui
@@ -315,12 +383,13 @@ int level1[16][16] =
 };
 
 //zombie variables
-int Current_Wave1 = 1;
+int Current_Wave1 = 3;
 bool canspawn = true;
 
 VertexArray dasheline(Quads);
 
 std::vector<bullet> bullets;
+vector <Zombie> zombies;
 
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
@@ -331,10 +400,11 @@ int main()
     GetTextures(); 
     Player.setTexture(WalkAnimation[0]);
     Player.setOrigin(Vector2f(Player.getGlobalBounds().width /2 , Player.getGlobalBounds().height / 2));
-    Player.setPosition(Vector2f(200, 200));
+    Player.setPosition(Vector2f(500, 500));
     Gun.setOrigin(Player.getOrigin());
     Clock clock;
     Event event;
+    window.setMouseCursorVisible(false);
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
         while (window.pollEvent(event)) {
@@ -421,6 +491,25 @@ void GetTextures()
     {
         Sword_Atk_animation[i].loadFromFile("knife/tile (" + std::to_string(i) + ").png");
     }
+    for (int i = 0; i < 8; i++)
+    {
+        zombie_walk_animation[i].loadFromFile("Zombies Animation/walk/tile" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 7; i++)
+    {
+        zombie_atk_animation[i].loadFromFile("Zombies Animation/attack/tile" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 2; i++)
+    {
+        zombie_hit_animation[i].loadFromFile("Zombies Animation/Hit/tile" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 6; i++)
+    {
+        zombie_death_animation[i].loadFromFile("Zombies Animation/Death/tile" + std::to_string(i) + ".png");
+    }
+    CrossHair_Texture.loadFromFile("weapons/crosshair.png");
+    Crosshair.setTexture(CrossHair_Texture);
+    Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2, Crosshair.getLocalBounds().height / 2);
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
@@ -444,6 +533,7 @@ void Update(float dt)
         current_player_pos = DashOrigin.getPosition();
         Vector2i pixelpos = Mouse::getPosition(window);
         MousePos = window.mapPixelToCoords(pixelpos);
+        globalorigin = window.mapPixelToCoords(Vector2i(0,0));
         Player_Movement(dt);
         Player_Collision(dt);
 
@@ -532,47 +622,20 @@ void Player_Collision(float dt)
             }
         }
     }
-    for (int i = 0; i < zombies.size(); i++)
+    if (Player_Health < 100)
     {
-        FloatRect Player_Bounds = Player.getGlobalBounds();
-        FloatRect intersection;
-        FloatRect Zombie_Bound = zombies[i].shape.getGlobalBounds();
-        if (Player_Bounds.intersects(Zombie_Bound))
+        for (int i = 0; i < HealthPacks.size(); i++)
         {
-
-            Player_Bounds.intersects(Zombie_Bound, intersection);
-            if (intersection.width < intersection.height)
+            if (Player.getGlobalBounds().intersects(HealthPacks[i].getGlobalBounds()))
             {
-                if (Player_Bounds.left < Zombie_Bound.left)
-                {
-                    Player.move(-50 * dt, 0);
-                }
-                else
-                {
-                    Player.move(50 * dt, 0);
-                }
-            }
-            else
-            {
-                if (Player_Bounds.top < Zombie_Bound.top)
-                {
-                    Player.move(0, -50 * dt);
-                }
-                else
-                {
-                    Player.move(0, 50 * dt);
-                }
+                Player_Health += 20;
+                HealthPacks.erase(HealthPacks.begin() + i);
             }
         }
     }
-
-    for (int i = 0; i < HealthPacks.size(); i++)
+    else if (Player_Health > 100)
     {
-        if (Player.getGlobalBounds().intersects(HealthPacks[i].getGlobalBounds()))
-        {
-            Player_Health += 20;
-            HealthPacks.erase(HealthPacks.begin() + i);
-        }
+        Player_Health = 100;
     }
     //vandingmachine
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds())&& Money>=speedmoney && speed_pow==false&& Keyboard::isKeyPressed(Keyboard::Key::E)) {
@@ -608,9 +671,9 @@ void Switch_States(float dt)
     }
     switch (curr_state)
     {
-    case state::walk: UpdateAnimationCounter(dt, 4, false); Player.setTexture(WalkAnimation[ImageCounter]); break;
-    case state::idle: UpdateAnimationCounter(dt, 4, false); Player.setTexture(IdleAnimation[ImageCounter]); break;
-    case state::death: UpdateAnimationCounter(dt, 9, true); Player.setTexture(DeathAnimation[ImageCounter]); break;
+    case state::walk: UpdateAnimationCounter(dt, 8, false); Player.setTexture(WalkAnimation[ImageCounter]); break;
+    case state::idle: UpdateAnimationCounter(dt, 6, false); Player.setTexture(IdleAnimation[ImageCounter]); break;
+    case state::death: UpdateAnimationCounter(dt, 6, true); Player.setTexture(DeathAnimation[ImageCounter]); break;
     case state::hit: UpdateAnimationCounter(dt, 4, true); Player.setTexture(HitAnimation[ImageCounter]); break;
     }
 }
@@ -655,7 +718,7 @@ void Dashing(float dt)
         if (timesincedash > 0.05f)
         {
             isdashing = false;
-            playerspeed = 500 * speedmulti;
+            playerspeed = 350 * speedmulti;
             timesincedash = 0;
         }
     }
@@ -883,18 +946,31 @@ void Bullet_Movement_Collision(float dt)
     {
         for (int j = 0; j < zombies.size(); j++)
         {
-            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()) && zombies[j].last_hit_bullet_id != bullets[i].id)
+            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()) && zombies[j].last_hit_bullet_id != bullets[i].id && !zombies[j].isdeath)
             {
                 zombies[j].last_hit_bullet_id = bullets[i].id;
                 zombies[j].health -= bullets[i].damage;
-                zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 10, bullets[i].currentvelocity.y * dt * 10);
+                if (Curr_Gun_state == Shotgun)
+                {
+                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 1 / 16, bullets[i].currentvelocity.y * dt * 1 / 16);
+                }
+                else
+                {
+                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt, bullets[i].currentvelocity.y * dt);
+                }
                 if (zombies[j].health <= 0)
                 {
                     Sprite newhealthpack;
                     newhealthpack.setTexture(Health_Texture);
                     newhealthpack.setPosition(zombies[j].shape.getPosition());
                     HealthPacks.push_back(newhealthpack);
-                    zombies.erase(zombies.begin() + j);
+                    zombies[j].isdeath = true;
+                    Score += 10;
+                    Money += 75;
+                }
+                else if (zombies[j].health > 0 && !zombies[j].isdeath)
+                {
+                    zombies[j].iszombiehit = true;
                 }
             }
 
@@ -1027,12 +1103,10 @@ void SpawnZombiesWaves(float dt)
     if (canspawn)
     {
         canspawn = false;
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < 30 * multiplier; i++)
         {
             Zombie newzombie;
-            newzombie.shape.setSize(Vector2f(50, 50));
-            newzombie.shape.setPosition(globalcenter.x + (rand() / static_cast<float>(RAND_MAX) * 1000), globalcenter.y + (rand() / static_cast<float>(RAND_MAX) * 1000));            
-            newzombie.shape.setFillColor(Color::Red);
+            newzombie.shape.setPosition(50 +(rand() % 1850),(50+rand() % 1850));
             newzombie.damage *= multiplier;
             newzombie.attack_fire_rate *= (1 / multiplier);
             newzombie.maxvelocity *= multiplier;
@@ -1054,10 +1128,19 @@ void HandleZombieBehaviour(float dt)
 {
     for (int i = 0; i < zombies.size(); i++)
     {
-        zombies[i].Zombie_Behaviour(Player.getPosition(), dt);
+        if (zombies[i].remove_zombie)
+        {
+            zombies.erase(zombies.begin() + i);
+            break;
+        }
+        zombies[i].Zombie_Behaviour(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation);
     }
     for (int i = 0; i < zombies.size(); i++)
     {
+        if (zombies[i].isdeath)
+        {
+            continue;
+        }
         for (int j = 0; j < Wall_Bounds.size(); j++)
         {
             FloatRect current_zombie_Bound = zombies[i].shape.getGlobalBounds();
@@ -1090,14 +1173,19 @@ void HandleZombieBehaviour(float dt)
                 }
             }
         }
-        if (knifed && zombies[i].shape.getGlobalBounds().intersects(test.getGlobalBounds()))
+        if (knifed && zombies[i].shape.getGlobalBounds().intersects(Crosshair.getGlobalBounds()))
         {
-            std::cout << "knifed" << std::endl;
             zombies[i].health -= current_damage;
             if (zombies[i].health <= 0)
             {
-                zombies.erase(zombies.begin() + i);
+                Score += 10;
+                Money += 75;
+                zombies[i].isdeath = true;
                 break;
+            }
+            else if (zombies[i].health > 0 && !zombies[i].isdeath)
+            {
+                zombies[i].iszombiehit = true;
             }
         }
         for (int j = 0; j < zombies.size(); j++)
@@ -1117,22 +1205,22 @@ void HandleZombieBehaviour(float dt)
                 {
                     if (Current_Zombie_Bound.left < Current_other_zombie_bound.left)
                     {
-                        zombies[i].shape.move(-200 * dt, 0);
+                        zombies[i].shape.move(-50 * dt, 0);
                     }
                     else
                     {
-                        zombies[i].shape.move(200 * dt, 0);
+                        zombies[i].shape.move(50 * dt, 0);
                     }
                 }
                 else
                 {
                     if (Current_Zombie_Bound.top < Current_other_zombie_bound.top)
                     {
-                        zombies[i].shape.move(0, -200 * dt);
+                        zombies[i].shape.move(0, -50 * dt);
                     }
                     else
                     {
-                        zombies[i].shape.move(0, 200 * dt);
+                        zombies[i].shape.move(0, 50 * dt);
                     }
                 }
             }
@@ -1144,22 +1232,28 @@ void HandleZombieBehaviour(float dt)
 //drawing function
 void Draw()
 {
-    window.clear(Color::White);
+    window.clear(Color::Black);
 
     if (Norm_dir_vector.x > 0)
     {
         Player.setScale(3, 3);
         Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
-        Gun.setScale(0.2f, 0.2f);
+        Gun.setScale(1, 1);
+        Crosshair.setPosition(Gun.getPosition().x + 15 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 2 + sin(Gun.getRotation() / 180 * pi) * 75);        
     }
     else
     {
         Player.setScale(-3, 3);
         Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
-        Gun.setScale(0.2f, -0.2f);
+        Gun.setScale(1, -1);
+        Crosshair.setPosition(Gun.getPosition().x - 15 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 5 + sin(Gun.getRotation() / 180 * pi) * 75);
     }
+    test.setPosition(Gun.getPosition().x - 20 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 2 + sin(Gun.getRotation() / 180 * pi) * 75);
+    window.draw(speedmachine);
+    window.draw(reloadmachine);
+    window.draw(Player);
     RectangleShape wall(Vector2f(128, 128));
-    wall.setFillColor(Color::Black);
+    wall.setFillColor(Color::White);
     for (int i = 0; i < 16; i++)
     {
         for (int j = 0; j < 16; j++)
@@ -1177,6 +1271,16 @@ void Draw()
     }
     for (int i = 0; i < zombies.size(); i++)
     {
+        zombies[i].shape.setScale(2.5,2.5);
+        zombies[i].shape.setOrigin(zombies[i].shape.getLocalBounds().width / 2, zombies[i].shape.getLocalBounds().height / 2);
+        if(zombies[i].currentvelocity.x < 0)
+        {
+            zombies[i].shape.setScale(zombies[i].shape.getScale().x * -1, zombies[i].shape.getScale().y);
+        }
+        else
+        {
+            zombies[i].shape.setScale(zombies[i].shape.getScale().x, zombies[i].shape.getScale().y);
+        }
         window.draw(zombies[i].shape);
     }
     if (isdashing)
@@ -1191,35 +1295,37 @@ void Draw()
     {
         Player.setScale(6, 6);
     }
-   
+    
     switch (Curr_Gun_state)
     {
     case Sword:
-        Sword_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
+        Sword_S.setScale(Gun.getScale().x, Gun.getScale().y);
         Sword_S.setPosition(Gun.getPosition());
         Sword_S.setRotation(Gun.getRotation());
         window.draw(Sword_S);
         break;
     case Pistol:
-        Pistol_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
+        Pistol_S.setScale(Gun.getScale().x * 3/4, Gun.getScale().y * 3 / 4);
         Pistol_S.setPosition(Gun.getPosition());
         Pistol_S.setRotation(Gun.getRotation());
         window.draw(Pistol_S);
+        Crosshair.setPosition(MousePos);
         break;
     case Smg:
-        SMG_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
+        SMG_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         SMG_S.setPosition(Gun.getPosition());
         SMG_S.setRotation(Gun.getRotation());
         window.draw(SMG_S);
+        Crosshair.setPosition(MousePos);
         break;
     case Shotgun:
-        ShotGun_S.setScale(Gun.getScale().x * 6, Gun.getScale().y * 6);
+        ShotGun_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         ShotGun_S.setPosition(Gun.getPosition());
         ShotGun_S.setRotation(Gun.getRotation());
         window.draw(ShotGun_S);
+        Crosshair.setPosition(MousePos);
         break;
     }
-    test.setPosition(Gun.getPosition().x-20 + cos(Gun.getRotation()/180 * pi) * 75, Gun.getPosition().y-10+ sin(Gun.getRotation()/180 * pi) * 75);
     for (int i = 0; i < HealthPacks.size(); i++)
     {
         window.draw(HealthPacks[i]);
@@ -1228,7 +1334,7 @@ void Draw()
     /*{  to draw score and coins title }*/
     Font font;
     font.loadFromFile("font of score and money.ttf");
-    Text text ,text2;
+    Text text ,text2,text3;
     text.setFont(font); // select the font 
     text.setString(" Score "+ to_string (Score));
     text.setCharacterSize(36);
@@ -1241,9 +1347,16 @@ void Draw()
     text2.setCharacterSize(36);
     text2.setFillColor(sf::Color(155, 215, 0));
     text2.setPosition(window.mapPixelToCoords(Vector2i(0, 68)));
+
+    text3.setFont(font); // select the font 
+    text3.setString(" Health : " + to_string(Player_Health));
+    text3.setCharacterSize(36);
+    text3.setFillColor(sf::Color(155, 215, 0));
+    text3.setPosition(window.mapPixelToCoords(Vector2i(0, 98)));
     
     window.draw(text);
     window.draw(text2);
+    window.draw(text3);
     /*{end   to draw score and coins title }*/
     /* to draw guns */
     /*pistol*/
@@ -1265,55 +1378,13 @@ void Draw()
     if (!shotgun_buy)
         window.draw(shotgun_buying);
     /*end draw guns */
-    /* health bar task */
-    if (Player_Health <= 10000 and Player_Health >= 8000)
-    {
-       // full_health_bar_photo.loadFromFile("full_health_bars.png");
-        full_health_bar.setTexture(full_health_bar_photo);
-        full_health_bar.setScale(Vector2f(0.35,0.35));
-        full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0 , 0)));
-        window.draw(full_health_bar);
-    }
-    else if (Player_Health <=8000 && Player_Health >= 6000)
-    {
-        //secand_health_bar_photo.loadFromFile("secand_full_health_bars.png");
-        secand_health_bar.setTexture(secand_health_bar_photo);
-        secand_health_bar.setScale(Vector2f(0.35, 0.35));
-        secand_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(secand_health_bar);
-    }
-    else if (Player_Health <= 6000 && Player_Health >= 4000)
-    {
-        //semi_full_health_bar_photo.loadFromFile("semi_full_health_bar.png");
-        semi_full_health_bar.setTexture(semi_full_health_bar_photo);
-        semi_full_health_bar.setScale(Vector2f(0.35, 0.35));
-        semi_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(semi_full_health_bar);
-    }
-    else if (Player_Health <= 4000 && Player_Health >= 2000)
-    {
-       // third_full_health_bar_photo.loadFromFile("third_full_health_bar.png");
-        third_full_health_bar.setTexture(third_full_health_bar_photo);
-        third_full_health_bar.setScale(Vector2f(0.35, 0.35));
-        third_full_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(third_full_health_bar);
-    }
-    else 
-    {
-        emtey_health_bar_photo.loadFromFile("emtey_health_bar.png");
-        emtey_health_bar.setTexture(emtey_health_bar_photo);
-        emtey_health_bar.setScale(Vector2f(0.35, 0.35));
-        emtey_health_bar.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-        window.draw(emtey_health_bar);
-    }
-    /* end tamer task */
 
     //vandingmachine
     speedmachine.setPosition(Vector2f(250, 250));
     reloadmachine.setPosition(Vector2f(700, 270));
-    window.draw(speedmachine);
-    window.draw(reloadmachine);
-    window.draw(Player);
+    speedmachine.setScale(0.5, 0.5);
+    reloadmachine.setScale(0.5, 0.5);
+    window.draw(Crosshair);
     window.display();
 }
 
@@ -1323,15 +1394,18 @@ void buying_weapons()
     {
         Money -= money_pistol;
         pistol_buy = true;
+        Score += 100;
     }
     if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()) && Money >= money_smg && !smg_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= money_smg;
         smg_buy = true;
+        Score += 100;
     }
     if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()) && Money >= money_shotgun && !shotgun_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= money_shotgun;
         shotgun_buy = true;
+        Score += 100;
     }
 }
