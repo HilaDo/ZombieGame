@@ -3,6 +3,9 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <fstream>
+#include <SFML/Audio.hpp>
+
 
 using namespace std;
 //to be displayed on ui
@@ -515,7 +518,7 @@ Vector2f Norm_dir_vector;
 Vector2f cameraoffset_shake;
 
 //zombie variables
-int Current_Wave1 = 1;
+int Current_Wave1 = 4;
 int TotalSpawnedZombies = 0;
 bool canspawn = true;
 
@@ -540,13 +543,24 @@ int main()
     Event event;
     window.setMouseCursorVisible(false);
     view.zoom(0.65);
+
+    ifstream inf("savegame.txt");
+    inf >>current_level;
+    inf >> Player_Health;
+    inf >> Score;
+    inf.close();
+
     SwtichCurrentWallBounds();
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
         while (window.pollEvent(event)) {
 
             if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
-
+                ofstream outf("savegame.txt");
+                outf << current_level << endl;
+                outf << Player_Health << endl;
+                outf << Score << endl;
+                outf.close();
                 window.close();
             }
         }
@@ -1316,7 +1330,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 10 * Current_Wave1)
+    if (TotalSpawnedZombies >= 1 * Current_Wave1)
     {
         canspawn = false;
     }
