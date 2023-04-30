@@ -8,11 +8,13 @@ using namespace std;
 //to be displayed on ui
 int Player_Health = 100;
 int Score= 0;
-int Money= 2500;
+int Money= 0;
 int const speedmoney = 2000;
 int const reloadmoney = 2000;
 float speedmulti = 1;
 float reloadmulti = 1;
+
+int current_level = 1;
 
 //buying weapon
 bool pistol_buy = false, smg_buy = false, shotgun_buy = false,speed_pow=false,reload_pow=false;
@@ -100,15 +102,17 @@ vector<Sprite> HealthPacks;
 struct Zombie
 {
     Sprite shape;
+    Sprite SpawnEffect;
+    Sprite BloodHitEffect;
     bool atkready = true;
     Vector2f currentvelocity;
     int last_hit_bullet_id = -1;
-    float maxvelocity = 250;
+    float maxvelocity = 175;
     float damage = 10;
     float attack_fire_rate = 1;
     float fire_rate_counter = 0;
     float animation_counter = 0;
-    float animation_duration = 0.25f;
+    float animation_duration = 0.20f;
     int imagecounter = 0;
 
     float Death_animation_counter = 0;
@@ -116,8 +120,12 @@ struct Zombie
     int Death_imagecounter = 0;
 
     float Hit_animation_counter = 0;
-    float Hit_animation_duration = 0.25f;
+    float Hit_animation_duration = 0.20f;
     int Hit_imagecounter = 0;
+
+    float Spawn_animation_counter = 0;
+    float Spawn_animation_duration = 0.15f;
+    int Spawn_imagecounter = 0;
 
     int numberofframes = 8;
     int health = 75;
@@ -126,11 +134,26 @@ struct Zombie
     bool isdeath = false;
     bool iszombiehit = false;
     bool remove_zombie = false;
-    void Zombie_Behaviour(Vector2f player_pos,float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[])
+    void setspawnlocation()
     {
+        SpawnEffect.setPosition(shape.getPosition());
+        SpawnEffect.setScale(2, 2);
+    }
+    void Zombie_Behaviour(Vector2f player_pos,float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[],Texture Spawn_anim[])
+    {
+        if (Spawn_imagecounter <= 6)
+        {
+            Spawn_animation_counter += dt;
+            SpawnEffect.setTexture(Spawn_anim[Spawn_imagecounter]);
+            if (Spawn_animation_counter >= Spawn_animation_duration)
+            {
+                Spawn_animation_counter = 0;
+                Spawn_imagecounter++;
+            }
+        }      
         if (iszombiehit && !isdeath)
         {
-            Hit_animation_counter += dt;
+            Hit_animation_counter += dt;         
             if (Hit_animation_counter >= Hit_animation_duration)
             {
                 Hit_animation_counter = 0;
@@ -192,7 +215,7 @@ struct Zombie
             Death_animation_counter += dt;
             if (Death_animation_counter >= Death_animation_duration)
             {
-                
+
                 if (Death_imagecounter < 5)
                 {
                     Death_imagecounter++;
@@ -204,7 +227,31 @@ struct Zombie
             }
             shape.setTexture(death_anim[Death_imagecounter]);
         }
-        
+    }
+};
+struct BloodEffect
+{
+    Sprite BloodShape;
+    float Hit_Blood_animation_counter = 0;
+    float Hit_Blood_animation_duration = 0.20f;
+    int Hit_Blood_imagecounter = 0;
+    void HandleBloodEffect(Texture blood_anim[], float dt)
+    {
+        Hit_Blood_animation_counter += dt;
+        if (Hit_Blood_imagecounter <= 8)
+        {
+            Hit_Blood_animation_counter += dt;
+            if (Hit_Blood_animation_counter >= 0.1f)
+            {
+                Hit_Blood_animation_counter = 0;
+                Hit_Blood_imagecounter++;
+            }
+            BloodShape.setTexture(blood_anim[Hit_Blood_imagecounter]);
+        }
+        else
+        {
+            BloodShape.setTexture(blood_anim[8]);
+        }
     }
 };
 void init_walls(); // function to initilize walls at the start of the game
@@ -216,6 +263,7 @@ void Player_Movement(float dt); // function responsible for the player movement
 void Player_Collision(float dt); // function that calculates and manages player collision with anything specified
 void Switch_States(float dt); // function that manages the current state of the player, i.e: player state right now is dashing, player state right now is dying, etc
 void UpdateAnimationCounter(float dt, int maximagecounter, bool isonce); //function that handles the changing of the animation frame with the specified number of frames as argument
+void UpdatePortalAnimation(float dt);
 
 void Dashing(float dt); //function that calculates dash direction and does the dashing
 void AddDashLineVertexes(); // function that calculates the verticies of the dash effect
@@ -236,7 +284,71 @@ void camera_shake(float dt);
 void SpawnZombiesWaves(float dt);
 void HandleZombieBehaviour(float dt);
 
+void SwtichCurrentWallBounds();
+
+void background();
+void wall();
+void block();
+
+//level 2 functions
+
+void background2();
+void wall2();
+void block2();
+
+//level 3 functions
+
+void background3();
+void wall3();
+void block3();
+
 void Draw(); // the main drawing function where everything gets drawn on screen
+
+
+//levels
+
+
+
+//door 
+
+Texture TDoor;
+Sprite Door[19];
+
+
+//level 3 variables
+
+Texture Tbackground3;
+Sprite Background3[4][7];
+
+Texture HwallT3, VwallT3;
+Sprite Hwall3[14], Vwall3[18];
+
+
+//level 2 variables
+
+Texture Tbackground2;
+Sprite Background2[4][7];
+
+Texture HwallT, VwallT;
+Sprite Hwall[15], Vwall[15];
+
+Texture TME2;
+Sprite ME2[8];
+
+
+//level 1 variables
+
+Texture Tbackground;
+Sprite background1[7][10];
+
+Texture VwallT1, HwallT1;
+Sprite Vwall1[15], Hwall1[15];
+
+Texture ME;
+Sprite ME1[7];
+
+
+
 
 CircleShape test(10);
 Vector2i center;
@@ -259,16 +371,14 @@ Sprite full_health_bar, secand_health_bar, semi_full_health_bar, third_full_heal
 Sprite speedmachine;
 Sprite reloadmachine;
 Sprite Crosshair;
+Sprite Portal_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
-RectangleShape wall1(Vector2f(50.0, 10000.0));
-RectangleShape wall2(Vector2f(50.0, 10000.0));
-RectangleShape wall3(Vector2f(10000.0, 50.0));
-RectangleShape wall4(Vector2f(10000.0, 50.0));
 
 Vector2f casingposition;
 
 bool finishedanimationonce = false;
+bool PortalOpen = false;
 
 //dash booleans
 bool isdashing = false;
@@ -282,10 +392,17 @@ bool trigger = true;
 bool knifed = false;
 bool iscamerashake = false;
 bool delayfinished = false;
+
+bool SpawnedAZombie = false;
 //wall bounds vector to detect collision
-std::vector <FloatRect> Wall_Bounds;
+vector <FloatRect> Wall_Bounds;
+vector <FloatRect> Wall_Bounds1;
+vector <FloatRect> Wall_Bounds2;
+vector <FloatRect> Wall_Bounds3;
 
 //animation textures
+Texture PortalAnimation[15];
+
 Texture WalkAnimation[8];
 Texture IdleAnimation[6];
 Texture HitAnimation[4];
@@ -308,6 +425,8 @@ Texture zombie_walk_animation[8];
 Texture zombie_atk_animation[7];
 Texture zombie_hit_animation[2];
 Texture zombie_death_animation[6];
+Texture Zombie_spawn_animation[7];
+Texture zombie_hit_blood_effect[10];
 
 Texture CrossHair_Texture;
 
@@ -338,10 +457,15 @@ float Wave_Cooldown_counter = 0;
 float Wave_Cooldown_duration = 2.0f;
 float hit_counter = 0;
 float hit_duration = 0.5f;
+float SpawningZombieCounter = 0;
+float SpawningZombieDuration = 3;
+float Portal_animation_counter = 0;
+float Portal_animation_duration = 0.2f;
+int Portal_imagecounter = 0;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
-float x, y, playerspeed = 350.0;
+float x, y, playerspeed = 175;
 
 //current gun attributes
 int* current_ammo = &pistolbulletsloaded; // ui
@@ -361,35 +485,17 @@ Vector2f MousePos;
 Vector2f dir_vector;
 Vector2f Norm_dir_vector;
 Vector2f cameraoffset_shake;
-//level array
-int level1[16][16] =
-{
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,1,1,1,1,1,1,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1}
-};
 
 //zombie variables
-int Current_Wave1 = 3;
+int Current_Wave1 = 1;
+int TotalSpawnedZombies = 0;
 bool canspawn = true;
 
 VertexArray dasheline(Quads);
 
 std::vector<bullet> bullets;
 vector <Zombie> zombies;
+vector <BloodEffect> bloodeffects;
 
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
@@ -405,6 +511,8 @@ int main()
     Clock clock;
     Event event;
     window.setMouseCursorVisible(false);
+    view.zoom(0.65);
+    SwtichCurrentWallBounds();
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
         while (window.pollEvent(event)) {
@@ -427,19 +535,18 @@ int main()
 //initial functions
 void init_walls()
 {
-    RectangleShape wall(Vector2f(128, 128));
-    wall.setFillColor(Color::Black);
-    for (int i = 0; i < 16; i++)
-    {
-        for (int j = 0; j < 16; j++)
-        {
-            if (level1[j][i] == 1)
-            {
-                wall.setPosition(i * 128, j * 128);
-                Wall_Bounds.push_back(wall.getGlobalBounds());
-            }
-        }
-    }
+    //level 1
+    background();
+    wall();
+    block();
+    //level 2
+    background2();
+    wall2();
+    block2();
+    //level 3
+    background3();
+    wall3();
+    block3();
 }
 void GetTextures()
 {
@@ -507,9 +614,22 @@ void GetTextures()
     {
         zombie_death_animation[i].loadFromFile("Zombies Animation/Death/tile" + std::to_string(i) + ".png");
     }
+    for (int i = 0; i < 7; i++)
+    {
+        Zombie_spawn_animation[i].loadFromFile("FX/ZombieSpawnEffect/frame" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 10; i++)
+    {
+        zombie_hit_blood_effect[i].loadFromFile("FX/blood/frame" + std::to_string(i) + ".png");
+    }
+    for (int i = 0; i < 15; i++)
+    {
+        PortalAnimation[i].loadFromFile("FX/WarpGate/tile" + std::to_string(i) + ".png");
+    }
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
-    Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2, Crosshair.getLocalBounds().height / 2);
+    Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2 + 50, Crosshair.getLocalBounds().height / 2);
+    Crosshair.setScale(0.5, 0.5);
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
@@ -529,7 +649,12 @@ void Update(float dt)
     
     if (curr_state != state::death)
     {  
-        cout << Player_Health << endl;
+
+        if (Keyboard::isKeyPressed(Keyboard::O));
+        {
+            cout << Player.getPosition().x <<"\t" << Player.getPosition().y << endl;
+        }
+
         current_player_pos = DashOrigin.getPosition();
         Vector2i pixelpos = Mouse::getPosition(window);
         MousePos = window.mapPixelToCoords(pixelpos);
@@ -638,7 +763,7 @@ void Player_Collision(float dt)
         Player_Health = 100;
     }
     //vandingmachine
-    if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds())&& Money>=speedmoney && speed_pow==false&& Keyboard::isKeyPressed(Keyboard::Key::E)) {
+    if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()) && Money >= speedmoney && speed_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
         playerspeed *= 2;
         speedmulti = 2;
         Money -= speedmoney;
@@ -649,6 +774,24 @@ void Player_Collision(float dt)
         reloadmulti = 0.5f;
         Money -= reloadmoney;
         reload_pow = true;
+    }
+    if (Player.getGlobalBounds().intersects(Portal_S.getGlobalBounds()) && PortalOpen && Keyboard::isKeyPressed(Keyboard::E))
+    {
+        PortalOpen = false;
+        current_level++;
+        pistol_buy = false;
+        smg_buy = false;
+        shotgun_buy = false;
+        speed_pow = false;
+        reload_pow = false;
+        speedmulti = 1;
+        reloadmulti = 1;
+        Money = 0;
+        Wall_Bounds.clear();
+        HealthPacks.clear();
+        Curr_Gun_state = Sword;
+        SwtichCurrentWallBounds();
+        Current_Wave1 = 0;
     }
 }
 void Switch_States(float dt)
@@ -701,6 +844,20 @@ void UpdateAnimationCounter(float dt,int maximagecounter,bool isonce)
         }
     }
 }
+void UpdatePortalAnimation(float dt)
+{
+    Portal_animation_counter += dt;
+    if (Portal_animation_counter >= Portal_animation_duration)
+    {
+        Portal_animation_counter = 0;
+        Portal_imagecounter++;
+        if (Portal_imagecounter >=15)
+        {
+            Portal_imagecounter = 0;
+        }
+    }
+    Portal_S.setTexture(PortalAnimation[Portal_imagecounter]);
+}
 
 //dashing functions
 void Dashing(float dt)
@@ -718,7 +875,7 @@ void Dashing(float dt)
         if (timesincedash > 0.05f)
         {
             isdashing = false;
-            playerspeed = 350 * speedmulti;
+            playerspeed = 175 * speedmulti;
             timesincedash = 0;
         }
     }
@@ -971,6 +1128,11 @@ void Bullet_Movement_Collision(float dt)
                 else if (zombies[j].health > 0 && !zombies[j].isdeath)
                 {
                     zombies[j].iszombiehit = true;
+                    zombies[j].BloodHitEffect.setPosition(zombies[j].shape.getPosition());
+                    BloodEffect newbloodeffect;
+                    newbloodeffect.BloodShape.setPosition(zombies[j].shape.getPosition());
+                    newbloodeffect.BloodShape.setScale(zombies[j].shape.getScale().x * -0.5f, zombies[j].shape.getScale().y * 0.5f);
+                    bloodeffects.push_back(newbloodeffect);
                 }
             }
 
@@ -1100,18 +1262,22 @@ void camera_shake(float dt)
 void SpawnZombiesWaves(float dt)
 {
     float multiplier = Current_Wave1 / (float)Level1NumWaves;
-    if (canspawn)
+    SpawningZombieCounter += dt;
+    if (canspawn && SpawningZombieCounter >= 1)
+    {
+        Zombie newzombie;
+        newzombie.shape.setPosition( 50 +rand() % 1770, 50 +rand() % 930);
+        newzombie.damage *= multiplier;
+        newzombie.attack_fire_rate *= (1 / multiplier);
+        newzombie.maxvelocity *= multiplier;
+        newzombie.setspawnlocation();
+        zombies.push_back(newzombie);
+        TotalSpawnedZombies++;
+        SpawningZombieCounter = 0;
+    }
+    if (TotalSpawnedZombies >= 15 * Current_Wave1)
     {
         canspawn = false;
-        for (int i = 0; i < 30 * multiplier; i++)
-        {
-            Zombie newzombie;
-            newzombie.shape.setPosition(50 +(rand() % 1850),(50+rand() % 1850));
-            newzombie.damage *= multiplier;
-            newzombie.attack_fire_rate *= (1 / multiplier);
-            newzombie.maxvelocity *= multiplier;
-            zombies.push_back(newzombie);
-        }
     }
     if (zombies.size()== 0 && !canspawn)
     {
@@ -1120,8 +1286,15 @@ void SpawnZombiesWaves(float dt)
         {
             Current_Wave1++;
             canspawn = true;
+            bloodeffects.clear();
             Wave_Cooldown_counter = 0;
         }
+    }
+    if (Current_Wave1 > 3 && current_level < 3)
+    {
+        canspawn = false;
+        PortalOpen = true;
+        UpdatePortalAnimation(dt);
     }
 }
 void HandleZombieBehaviour(float dt)
@@ -1133,7 +1306,11 @@ void HandleZombieBehaviour(float dt)
             zombies.erase(zombies.begin() + i);
             break;
         }
-        zombies[i].Zombie_Behaviour(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation);
+        zombies[i].Zombie_Behaviour(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation,Zombie_spawn_animation);
+    }
+    for (int i = 0; i < bloodeffects.size(); i++)
+    {       
+        bloodeffects[i].HandleBloodEffect(zombie_hit_blood_effect, dt);
     }
     for (int i = 0; i < zombies.size(); i++)
     {
@@ -1186,6 +1363,11 @@ void HandleZombieBehaviour(float dt)
             else if (zombies[i].health > 0 && !zombies[i].isdeath)
             {
                 zombies[i].iszombiehit = true;
+                zombies[i].BloodHitEffect.setPosition(zombies[i].shape.getPosition());
+                BloodEffect newbloodeffect;
+                newbloodeffect.BloodShape.setPosition(zombies[i].shape.getPosition());
+                newbloodeffect.BloodShape.setScale(zombies[i].shape.getScale().x * -0.5f, zombies[i].shape.getScale().y * 0.5f);
+                bloodeffects.push_back(newbloodeffect);
             }
         }
         for (int j = 0; j < zombies.size(); j++)
@@ -1229,49 +1411,675 @@ void HandleZombieBehaviour(float dt)
   
 }
 
+void SwtichCurrentWallBounds()
+{
+    switch (current_level)
+    {
+    case 1:
+        for (int i = 0; i < Wall_Bounds1.size(); i++)
+        {
+            Wall_Bounds.push_back(Wall_Bounds1[i]);
+        }
+        break;
+    case 2:
+        for (int i = 0; i < Wall_Bounds2.size(); i++)
+        {
+            Wall_Bounds.push_back(Wall_Bounds2[i]);
+        }
+        break;
+    case 3:
+        for (int i = 0; i < Wall_Bounds3.size(); i++)
+        {
+            Wall_Bounds.push_back(Wall_Bounds3[i]);
+        }
+        break;
+    }
+}
+
+
+void background()
+{
+    Tbackground.loadFromFile("LevelAssets/Ground_1.jpg");
+
+    for (int i = 0; i < 10; i++)
+    {
+        for (int j = 0; j < 7; j++)
+        {
+            background1[j][i].setTexture(Tbackground);
+            background1[j][i].setPosition(i * 200, j * 200);
+        }
+    }
+}
+
+void wall()
+{
+    VwallT1.loadFromFile("LevelAssets/Vwall1.png");
+    HwallT1.loadFromFile("LevelAssets/Hwall1.png");
+    for (int i = 0; i < 15; i++)
+    {
+        Vwall1[i].setTexture(VwallT1);
+    }
+    for (int i = 0; i < 15; i++)
+    {
+        Hwall1[i].setTexture(HwallT1);
+    }
+
+    //upper wall
+
+    for (int i = 0; i < 5; i++)
+    {
+        Hwall1[i].setPosition(405 * i, 0);
+        Wall_Bounds1.push_back(Hwall1[i].getGlobalBounds());
+    }
+    //lower wall
+
+    for (int i = 5; i < 10; i++)
+    {
+        Hwall1[i].setPosition(405 * (i - 5), 1020);
+        Wall_Bounds1.push_back(Hwall1[i].getGlobalBounds());
+    }
+    //left wall
+
+    for (int i = 0; i < 4; i++)
+    {
+        Vwall1[i].setPosition(0, (405 * i) + 40);
+        Wall_Bounds1.push_back(Vwall1[i].getGlobalBounds());
+    }
+    //Right wall
+
+    for (int i = 4; i < 8; i++)
+    {
+        Vwall1[i].setPosition(1890, (405 * (i - 4)) + 40);
+        Wall_Bounds1.push_back(Vwall1[i].getGlobalBounds());
+    }
+
+    //mid walls
+    for (int i = 10; i < 14; i++)
+    {
+        Hwall1[i].setPosition((405 * (i - 10)) + 30, 550);
+        Wall_Bounds1.push_back(Hwall1[i].getGlobalBounds());
+    }
+    Vwall1[8].setTextureRect(IntRect(0, 0, 30, 275));
+    Vwall1[8].setPosition(1050, 575);
+    Vwall1[9].setTextureRect(IntRect(0, 0, 30, 305));
+    Vwall1[9].setPosition(800, 245);
+    Wall_Bounds1.push_back(Vwall1[8].getGlobalBounds());
+    Wall_Bounds1.push_back(Vwall1[9].getGlobalBounds());
+}
+
+void block()
+{
+    ME.loadFromFile("LevelAssets/ME1.png");
+    for (int i = 0; i < 7; i++)
+    {
+        ME1[i].setTexture(ME);
+    }
+    ME1[0].setPosition(1878, 990);
+    ME1[1].setPosition(0, 990);
+    ME1[2].setPosition(0, 515);
+    ME1[3].setPosition(792, 515);
+    ME1[4].setPosition(1042, 518);//
+    ME1[5].setPosition(0, -20);//
+    ME1[6].setPosition(1878, -20);//
+
+    //door
+    TDoor.loadFromFile("LevelAssets/Box.png");
+    for (int i = 1; i < 17; i++)
+    {
+        Door[i].setTexture(TDoor);
+    }
+    for (int i = 0; i < 6; i++)
+    {
+        Door[i].setPosition(760, -30 + (35 * i));
+    }
+    for (int i = 6; i < 11; i++)
+    {
+        Door[i].setPosition(1630 + (46 * (i - 6)), 500);
+    }
+    for (int i = 11; i < 17; i++)
+    {
+        Door[i].setPosition(1020, 775 + (35 * (i - 11)));
+    }
+}
+
+//level 2 functions
+
+void background2()
+{
+    Tbackground2.loadFromFile("LevelAssets/Ground_2.png");
+    for (int i = 0; i < 7; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            Background2[j][i].setTexture(Tbackground2);
+            Background2[j][i].setColor(Color(237, 174, 161));
+            Background2[j][i].setPosition(i * 298, j * 298);
+        }
+    }
+}
+
+void wall2()
+{
+    HwallT.loadFromFile("LevelAssets/Hwall2.png");
+    VwallT.loadFromFile("LevelAssets/Vwall2.png");
+    for (int i = 0; i < 15; i++)
+    {
+        Hwall[i].setTexture(HwallT);
+    }
+    for (int i = 0; i < 15; i++)
+    {
+        Vwall[i].setTexture(VwallT);
+    }
+    //upper wall
+    for (int i = 0; i < 5; i++)
+    {
+        Hwall[i].setPosition(i * 410, 0);
+        Wall_Bounds2.push_back(Hwall[i].getGlobalBounds());
+    };
+
+    //lowwer wall
+    for (int i = 5; i < 10; i++)
+    {
+        Hwall[i].setPosition((i - 5) * 410, 1023);
+        Wall_Bounds2.push_back(Hwall[i].getGlobalBounds());
+    };
+
+    //left wall
+    for (int i = 0; i < 3; i++)
+    {
+        Vwall[i].setPosition(0, i * 347);
+        Wall_Bounds2.push_back(Vwall[i].getGlobalBounds());
+    };
+
+    //right wall
+    for (int i = 3; i < 6; i++)
+    {
+        Vwall[i].setPosition(1892, (i - 3) * 347);
+        Wall_Bounds2.push_back(Vwall[i].getGlobalBounds());
+    };
+
+    //mid walls
+
+    //up
+    Vwall[6].setPosition(615, 55);
+    Vwall[7].setPosition(615, 35);
+    Vwall[8].setPosition(1300, 55);
+    Vwall[9].setPosition(1300, 35);
+    Wall_Bounds2.push_back(Vwall[6].getGlobalBounds());
+    Wall_Bounds2.push_back(Vwall[7].getGlobalBounds());
+    Wall_Bounds2.push_back(Vwall[8].getGlobalBounds());
+    Wall_Bounds2.push_back(Vwall[9].getGlobalBounds());
+
+    //down
+    Vwall[10].setPosition(615, 680);
+    Vwall[11].setPosition(1300, 680);
+    Wall_Bounds2.push_back(Vwall[10].getGlobalBounds());
+    Wall_Bounds2.push_back(Vwall[11].getGlobalBounds());
+
+}
+
+void block2()
+{
+    TME2.loadFromFile("LevelAssets/ME2.png");
+    for (int i = 0; i < 8; i++)
+    {
+        ME2[i].setTexture(TME2);
+    }
+    ME2[0].setPosition(-10, -30);//
+    ME2[1].setPosition(-10, 980);//
+    ME2[2].setPosition(1880, -30);//
+    ME2[3].setPosition(1880, 980);//
+    ME2[4].setPosition(605, 980);
+    ME2[5].setPosition(1290, 980);
+    ME2[6].setPosition(605, -30);
+    ME2[7].setPosition(1290, -30);
+
+
+
+    TDoor.loadFromFile("LevelAssets/Box.png");
+    for (int i = 1; i < 17; i++)
+    {
+        Door[i].setTexture(TDoor);
+    }
+
+    //left door
+    for (int i = 0; i < 8; i++)
+    {
+        Door[i].setPosition(590, 330 + (35 * i));
+    }
+
+    //right door
+    for (int i = 8; i < 15; i++)
+    {
+        Door[i].setPosition(1273, 80 + (35 * i));
+    }
+}
+
+
+
+//level 3 functions
+void background3()
+{
+    Tbackground3.loadFromFile("LevelAssets/Ground_3.png");
+    for (int i = 0; i < 7; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            Background3[j][i].setTexture(Tbackground3);
+        }
+    }
+
+    for (int i = 0; i < 7; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            Background3[j][i].setPosition(i * 314, j * 314);
+        }
+
+    }
+}
+
+void wall3()
+{
+    HwallT3.loadFromFile("LevelAssets/Hwall3.png");
+    VwallT3.loadFromFile("LevelAssets/Vwall3.png");
+    // set texture
+    for (int i = 0; i < 14; i++)
+    {
+        Hwall3[i].setTexture(HwallT3);
+    }
+    for (int i = 0; i < 18; i++)
+    {
+        Vwall3[i].setTexture(VwallT3);
+    }
+
+    //upper wall
+    for (int i = 0; i < 5; i++)
+    {
+        Hwall3[i].setPosition(i * 410, -30);
+        Wall_Bounds3.push_back(Hwall3[i].getGlobalBounds());
+    };
+
+    //lowwer wall
+    for (int i = 5; i < 10; i++)
+    {
+        Hwall3[i].setPosition((i - 5) * 410, 990);
+        Wall_Bounds3.push_back(Hwall3[i].getGlobalBounds());
+    };
+
+    //Right wall
+    for (int i = 0; i < 7; i++)
+    {
+        Vwall3[i].setPosition(0, i * 150);
+        Wall_Bounds3.push_back(Vwall3[i].getGlobalBounds());
+    };
+
+    //left wall
+    for (int i = 7; i < 14; i++)
+    {
+        Vwall3[i].setPosition(1887, (i - 7) * 150);
+        Wall_Bounds3.push_back(Vwall3[i].getGlobalBounds());
+    }
+
+    //mid walls
+    Hwall3[10].setPosition(0, 500);
+    Hwall3[11].setPosition(410, 500);
+    Hwall3[12].setPosition(1090, 500);
+    Hwall3[13].setPosition(1500, 500);
+
+    Wall_Bounds3.push_back(Hwall3[10].getGlobalBounds());
+    Wall_Bounds3.push_back(Hwall3[11].getGlobalBounds());
+    Wall_Bounds3.push_back(Hwall3[12].getGlobalBounds());
+    Wall_Bounds3.push_back(Hwall3[13].getGlobalBounds());
+
+    Vwall3[14].setPosition(1090, 500);
+    Vwall3[15].setPosition(1090, 650);
+    Vwall3[16].setPosition(783, 0);
+    Vwall3[17].setPosition(783, 150);
+
+    Wall_Bounds3.push_back(Vwall3[14].getGlobalBounds());
+    Wall_Bounds3.push_back(Vwall3[15].getGlobalBounds());
+    Wall_Bounds3.push_back(Vwall3[16].getGlobalBounds());
+    Wall_Bounds3.push_back(Vwall3[17].getGlobalBounds());
+}
+
+void block3()
+{
+    TDoor.loadFromFile("LevelAssets/Box.png");
+
+    for (int i = 1; i < 17; i++)
+    {
+        Door[i].setTexture(TDoor);
+    }
+    //upper door
+    for (int i = 1; i < 6; i++)
+    {
+        Door[i].setPosition(750, 265 + (35 * i));
+    };
+    //mid door
+    for (int i = 6; i < 12; i++)
+    {
+        Door[i].setPosition(515 + (46 * i), 485);
+    };
+    //lowwer door
+    for (int i = 12; i < 17; i++)
+    {
+        Door[i].setPosition(1060, 360 + (35 * i));
+    };
+
+}
+
+
 //drawing function
 void Draw()
 {
-    window.clear(Color::Black);
+    window.clear();
 
     if (Norm_dir_vector.x > 0)
     {
-        Player.setScale(3, 3);
+        Player.setScale(2, 2);
         Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
-        Gun.setScale(1, 1);
+        Gun.setScale(0.5, 0.5);
         Crosshair.setPosition(Gun.getPosition().x + 15 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 2 + sin(Gun.getRotation() / 180 * pi) * 75);        
     }
     else
     {
-        Player.setScale(-3, 3);
+        Player.setScale(-2, 2);
         Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
-        Gun.setScale(1, -1);
+        Gun.setScale(0.5, -0.5);
         Crosshair.setPosition(Gun.getPosition().x - 15 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 5 + sin(Gun.getRotation() / 180 * pi) * 75);
     }
     test.setPosition(Gun.getPosition().x - 20 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 2 + sin(Gun.getRotation() / 180 * pi) * 75);
-    window.draw(speedmachine);
-    window.draw(reloadmachine);
-    window.draw(Player);
-    RectangleShape wall(Vector2f(128, 128));
-    wall.setFillColor(Color::White);
-    for (int i = 0; i < 16; i++)
+    switch (current_level)
     {
-        for (int j = 0; j < 16; j++)
+    case 1:
+        Portal_S.setPosition(580, 790);
+        speedmachine.setPosition(Vector2f(35, 25));
+        reloadmachine.setPosition(Vector2f(1120, 645));
+        pistol_buying.setPosition(Vector2f(150, 95)); 
+        smg_buying.setPosition(Vector2f(860, 415)); 
+        shotgun_buying.setPosition(Vector2f(1850, 790));
+        //upper wall
+
+        for (int i = 0; i < 5; i++)
         {
-            if (level1[j][i] == 1)
+            Hwall1[i].setPosition(405 * i, 0);
+        }
+        //lower wall
+
+        for (int i = 5; i < 10; i++)
+        {
+            Hwall1[i].setPosition(405 * (i - 5), 1020);
+        }
+        //left wall
+
+        for (int i = 0; i < 4; i++)
+        {
+            Vwall1[i].setPosition(0, (405 * i) + 40);
+        }
+        //Right wall
+
+        for (int i = 4; i < 8; i++)
+        {
+            Vwall1[i].setPosition(1890, (405 * (i - 4)) + 40);
+        }
+
+        //mid walls
+        for (int i = 10; i < 14; i++)
+        {
+            Hwall1[i].setPosition((405 * (i - 10)) + 30, 550);
+        }
+        Vwall1[8].setPosition(1050, 575);
+        Vwall1[9].setPosition(800, 245);
+
+        ME1[0].setPosition(1878, 990);
+        ME1[1].setPosition(0, 990);
+        ME1[2].setPosition(0, 515);
+        ME1[3].setPosition(792, 515);
+        ME1[4].setPosition(1042, 518);//
+        ME1[5].setPosition(0, -20);//
+        ME1[6].setPosition(1878, -20);//
+
+        for (int i = 0; i < 6; i++)
+        {
+            Door[i].setPosition(760, -30 + (35 * i));
+        }
+        for (int i = 6; i < 11; i++)
+        {
+            Door[i].setPosition(1630 + (46 * (i - 6)), 500);
+        }
+        for (int i = 11; i < 17; i++)
+        {
+            Door[i].setPosition(1020, 775 + (35 * (i - 11)));
+        }
+
+        for (int i = 0; i < 10; i++)
+        {
+            for (int j = 0; j < 7; j++)
             {
-                wall.setPosition(i * 128, j * 128);
-                window.draw(wall);
+                window.draw(background1[j][i]);
             }
         }
+        //upper wall
+        for (int i = 0; i < 5; i++)
+        {
+            window.draw(Hwall1[i]);
+        }
+        //mid wall
+        for (int i = 10; i < 14; i++)
+        {
+            window.draw(Hwall1[i]);
+        }
+        for (int i = 4; i < 7; i++)
+        {
+            window.draw(ME1[i]);
+        }
+        for (int i = 0; i < 10; i++)
+        {
+            window.draw(Vwall1[i]);
+        }
+        for (int i = 11; i < 17; i++)
+        {
+            window.draw(Door[i]);
+        }
+        //lower wall
+        for (int i = 5; i < 10; i++)
+        {
+            window.draw(Hwall1[i]);
+        }
+        for (int i = 0; i < 11; i++)
+        {
+            window.draw(Door[i]);
+        }
+        window.draw(Vwall1[9]);
+        for (int i = 0; i < 4; i++)
+        {
+            window.draw(ME1[i]);
+        }
+        break;
+    case 2:
+        Portal_S.setPosition(50, 50);
+        //upper wall
+        for (int i = 0; i < 5; i++)
+        {
+            Hwall[i].setPosition(i * 410, 0);
+        };
+
+        //lowwer wall
+        for (int i = 5; i < 10; i++)
+        {
+            Hwall[i].setPosition((i - 5) * 410, 1023);
+        };
+
+        //left wall
+        for (int i = 0; i < 3; i++)
+        {
+            Vwall[i].setPosition(0, i * 347);
+        };
+
+        //right wall
+        for (int i = 3; i < 6; i++)
+        {
+            Vwall[i].setPosition(1892, (i - 3) * 347);
+        };
+
+        //mid walls
+
+        //up
+        Vwall[6].setPosition(615, 55);
+        Vwall[7].setPosition(615, 35);
+        Vwall[8].setPosition(1300, 55);
+        Vwall[9].setPosition(1300, 35);
+        //down
+        Vwall[10].setPosition(615, 680);
+        Vwall[11].setPosition(1300, 680);
+
+        ME2[0].setPosition(-10, -30);//
+        ME2[1].setPosition(-10, 980);//
+        ME2[2].setPosition(1880, -30);//
+        ME2[3].setPosition(1880, 980);//
+        ME2[4].setPosition(605, 980);
+        ME2[5].setPosition(1290, 980);
+        ME2[6].setPosition(605, -30);
+        ME2[7].setPosition(1290, -30);
+
+        //left door
+        for (int i = 0; i < 8; i++)
+        {
+            Door[i].setPosition(590, 330 + (35 * i));
+        }
+
+        //right door
+        for (int i = 8; i < 15; i++)
+        {
+            Door[i].setPosition(1273, 80 + (35 * i));
+        }
+
+        for (int i = 0; i < 7; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                window.draw(Background2[j][i]);
+            }
+        }
+        for (int i = 0; i < 15; i++)
+        {
+            window.draw(Hwall[i]);
+        }
+        window.draw(ME2[6]);
+        window.draw(ME2[7]);
+        for (int i = 0; i < 10; i++)
+        {
+            window.draw(Vwall[i]);
+        }
+        for (int i = 0; i < 15; i++)
+        {
+            window.draw(Door[i]);
+        }
+        window.draw(Vwall[10]);
+        window.draw(Vwall[11]);
+        for (int i = 0; i < 6; i++)
+        {
+            window.draw(ME2[i]);
+        }
+        break;
+    case 3:
+        Portal_S.setPosition(50, 50);
+        //upper wall
+        for (int i = 0; i < 5; i++)
+        {
+            Hwall3[i].setPosition(i * 410, -30);
+        };
+
+        //lowwer wall
+        for (int i = 5; i < 10; i++)
+        {
+            Hwall3[i].setPosition((i - 5) * 410, 990);
+        };
+
+        //Right wall
+        for (int i = 0; i < 7; i++)
+        {
+            Vwall3[i].setPosition(0, i * 150);
+        };
+
+        //left wall
+        for (int i = 7; i < 14; i++)
+        {
+            Vwall3[i].setPosition(1887, (i - 7) * 150);
+        }
+
+        //mid walls
+        Hwall3[10].setPosition(0, 500);
+        Hwall3[11].setPosition(410, 500);
+        Hwall3[12].setPosition(1090, 500);
+        Hwall3[13].setPosition(1500, 500);
+        Vwall3[14].setPosition(1090, 500);
+        Vwall3[15].setPosition(1090, 650);
+        Vwall3[16].setPosition(783, 0);
+        Vwall3[17].setPosition(783, 150);
+
+
+        //upper door
+        for (int i = 1; i < 6; i++)
+        {
+            Door[i].setPosition(750, 265 + (35 * i));
+        };
+        //mid door
+        for (int i = 6; i < 12; i++)
+        {
+            Door[i].setPosition(515 + (46 * i), 485);
+        };
+        //lowwer door
+        for (int i = 12; i < 17; i++)
+        {
+            Door[i].setPosition(1060, 360 + (35 * i));
+        };
+
+
+        for (int i = 0; i < 7; i++)
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                window.draw(Background3[j][i]);
+            }
+        }
+        for (int i = 0; i < 18; i++)
+        {
+            window.draw(Vwall3[i]);
+        }
+        for (int i = 0; i < 17; i++)
+        {
+            window.draw(Door[i]);
+        }
+        for (int i = 0; i < 14; i++)
+        {
+            window.draw(Hwall3[i]);
+        }
+        break;
     }
+    window.draw(speedmachine);
+    window.draw(reloadmachine);
+    Portal_S.setOrigin(Portal_S.getLocalBounds().width / 2, Portal_S.getLocalBounds().height / 2);
+    if (PortalOpen)
+    {
+        window.draw(Portal_S);
+    }
+    for (int i = 0; i < bloodeffects.size(); i++)
+    {
+        bloodeffects[i].BloodShape.setOrigin(bloodeffects[i].BloodShape.getLocalBounds().width / 2, bloodeffects[i].BloodShape.getLocalBounds().height / 2);
+        window.draw(bloodeffects[i].BloodShape);
+    }
+    window.draw(Player);
     for (int i = 0; i < bullets.size(); i++)
     {
         window.draw(bullets[i].shape);
     }
     for (int i = 0; i < zombies.size(); i++)
     {
-        zombies[i].shape.setScale(2.5,2.5);
+        zombies[i].SpawnEffect.setOrigin(zombies[i].SpawnEffect.getLocalBounds().width / 2, zombies[i].SpawnEffect.getLocalBounds().height / 2);      
+        window.draw(zombies[i].SpawnEffect);
+        zombies[i].shape.setScale(2,2);
         zombies[i].shape.setOrigin(zombies[i].shape.getLocalBounds().width / 2, zombies[i].shape.getLocalBounds().height / 2);
         if(zombies[i].currentvelocity.x < 0)
         {
@@ -1334,57 +2142,64 @@ void Draw()
     /*{  to draw score and coins title }*/
     Font font;
     font.loadFromFile("font of score and money.ttf");
-    Text text ,text2,text3;
-    text.setFont(font); // select the font 
-    text.setString(" Score "+ to_string (Score));
-    text.setCharacterSize(36);
-    text.setFillColor(sf::Color(155, 215, 0));
-    text.setPosition(window.mapPixelToCoords(Vector2i(0, 36)));
+    Text Score_Text ,Money_Text,text3,text4;
+    Score_Text.setFont(font); // select the font 
+    Score_Text.setString(" Score "+ to_string (Score));
+    Score_Text.setCharacterSize(36);
+    Score_Text.setFillColor(sf::Color(155, 215, 0));
+    Score_Text.setPosition(window.mapPixelToCoords(Vector2i(0, 36)));
 
     //score
-    text2.setFont(font); // select the font 
-    text2.setString(" Money : " + to_string(Money));
-    text2.setCharacterSize(36);
-    text2.setFillColor(sf::Color(155, 215, 0));
-    text2.setPosition(window.mapPixelToCoords(Vector2i(0, 68)));
+    Money_Text.setFont(font); // select the font 
+    Money_Text.setString(" Money : " + to_string(Money));
+    Money_Text.setCharacterSize(36);
+    Money_Text.setFillColor(sf::Color(155, 215, 0));
+    Money_Text.setPosition(window.mapPixelToCoords(Vector2i(0, 68)));
 
     text3.setFont(font); // select the font 
     text3.setString(" Health : " + to_string(Player_Health));
     text3.setCharacterSize(36);
     text3.setFillColor(sf::Color(155, 215, 0));
     text3.setPosition(window.mapPixelToCoords(Vector2i(0, 98)));
+
+    text3.setFont(font); // select the font 
+    text3.setString(" Current Wave : " + to_string(Current_Wave1));
+    text3.setCharacterSize(36);
+    text3.setFillColor(sf::Color(155, 215, 0));
+    text3.setPosition(window.mapPixelToCoords(Vector2i(0, 128)));
     
-    window.draw(text);
-    window.draw(text2);
+    window.draw(Score_Text);
+    window.draw(Money_Text);
     window.draw(text3);
+    window.draw(text4);
     /*{end   to draw score and coins title }*/
     /* to draw guns */
     /*pistol*/
     pistol_photo.loadFromFile("pistol.png");
     pistol_buying.setTexture(pistol_photo);
-    pistol_buying.setPosition(Vector2f(150,500));
     if (!pistol_buy)
     window.draw(pistol_buying);
     /*smg*/
     smg_photo.loadFromFile("smg.png");
     smg_buying.setTexture(smg_photo);
-    smg_buying.setPosition(Vector2f(350, 500));
+    
     if (!smg_buy)
         window.draw(smg_buying);
     /* shotgun */
     shotgun_photo.loadFromFile("shotgun.png");
     shotgun_buying.setTexture(shotgun_photo);
-    shotgun_buying.setPosition(Vector2f(150, 600));
+    
     if (!shotgun_buy)
         window.draw(shotgun_buying);
     /*end draw guns */
 
     //vandingmachine
-    speedmachine.setPosition(Vector2f(250, 250));
-    reloadmachine.setPosition(Vector2f(700, 270));
     speedmachine.setScale(0.5, 0.5);
     reloadmachine.setScale(0.5, 0.5);
     window.draw(Crosshair);
+
+
+
     window.display();
 }
 
