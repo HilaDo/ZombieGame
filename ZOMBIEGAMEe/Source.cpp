@@ -39,7 +39,7 @@ int const money_pistol = 500, money_smg = 1000, money_shotgun = 1500;
 int pistolammostock = 240;
 int pistolbulletsloaded = pistolclipsize;
 
-#define riflefirerate 0.2f
+#define riflefirerate 0.08f
 #define rifledamage 3
 #define riflespread 0
 #define riflebulletpershot 1
@@ -103,7 +103,6 @@ struct Zombie
 {
     Sprite shape;
     Sprite SpawnEffect;
-    Sprite BloodHitEffect;
     bool atkready = true;
     Vector2f currentvelocity;
     int last_hit_bullet_id = -1;
@@ -235,6 +234,12 @@ struct BloodEffect
     float Hit_Blood_animation_counter = 0;
     float Hit_Blood_animation_duration = 0.20f;
     int Hit_Blood_imagecounter = 0;
+    int randomnumber;
+    bool DeleteMe = false;
+    void assign_random_number()
+    {
+        randomnumber = rand() % 9;
+    }
     void HandleBloodEffect(Texture blood_anim[], float dt)
     {
         Hit_Blood_animation_counter += dt;
@@ -250,7 +255,11 @@ struct BloodEffect
         }
         else
         {
-            BloodShape.setTexture(blood_anim[8]);
+            if (Hit_Blood_animation_counter >= 5.8)
+            {
+                DeleteMe = true;
+            }
+            BloodShape.setTexture(blood_anim[randomnumber]);
         }
     }
 };
@@ -479,7 +488,7 @@ float hit_duration = 0.5f;
 float SpawningZombieCounter = 0;
 float SpawningZombieDuration = 3;
 float Portal_animation_counter = 0;
-float Portal_animation_duration = 0.2f;
+float Portal_animation_duration = 0.1f;
 int Portal_imagecounter = 0;
 //firerate counter
 float fire_rate_counter;
@@ -531,6 +540,7 @@ int main()
     Event event;
     window.setMouseCursorVisible(false);
     view.zoom(0.65);
+    SwtichCurrentWallBounds();
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
         while (window.pollEvent(event)) {
@@ -647,7 +657,7 @@ void GetTextures()
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
     Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2 + 50, Crosshair.getLocalBounds().height / 2);
-    Crosshair.setScale(0.5, 0.5);
+    Crosshair.setScale(0.3, 0.3);
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
@@ -821,6 +831,7 @@ void Player_Collision(float dt)
         Wall_Bounds.clear();
         HealthPacks.clear();
         Curr_Gun_state = Sword;
+        playerspeed = 175;
         SwtichCurrentWallBounds();
         Current_Wave1 = 0;
     }
@@ -1120,7 +1131,6 @@ void Bullet_Movement_Collision(float dt)
     {
         bullets[i].shape.move(bullets[i].currentvelocity * dt);
         bullets[i].animation(dt, bullet_animation);
-        bullets[i].shape.setScale(2, 2);
         for (int k = 0; k < Wall_Bounds.size(); k++)
         {
             if (bullets[i].shape.getGlobalBounds().intersects(Wall_Bounds[k]))
@@ -1154,15 +1164,15 @@ void Bullet_Movement_Collision(float dt)
                     HealthPacks.push_back(newhealthpack);
                     zombies[j].isdeath = true;
                     Score += 10;
-                    Money += 75;
+                    Money += 175;
                 }
                 else if (zombies[j].health > 0 && !zombies[j].isdeath)
                 {
                     zombies[j].iszombiehit = true;
-                    zombies[j].BloodHitEffect.setPosition(zombies[j].shape.getPosition());
                     BloodEffect newbloodeffect;
                     newbloodeffect.BloodShape.setPosition(zombies[j].shape.getPosition());
                     newbloodeffect.BloodShape.setScale(zombies[j].shape.getScale().x * -0.5f, zombies[j].shape.getScale().y * 0.5f);
+                    newbloodeffect.assign_random_number();
                     bloodeffects.push_back(newbloodeffect);
                 }
             }
@@ -1306,18 +1316,18 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 15 * Current_Wave1)
+    if (TotalSpawnedZombies >= 10 * Current_Wave1)
     {
         canspawn = false;
     }
-    if (zombies.size()== 0 && !canspawn)
+    if (zombies.size()== 0 && !canspawn && !PortalOpen )
     {
         Wave_Cooldown_counter += dt;
         if (Wave_Cooldown_counter >= Wave_Cooldown_duration)
         {
             Current_Wave1++;
+            TotalSpawnedZombies = 0;
             canspawn = true;
-            bloodeffects.clear();
             Wave_Cooldown_counter = 0;
         }
     }
@@ -1340,7 +1350,12 @@ void HandleZombieBehaviour(float dt)
         zombies[i].Zombie_Behaviour(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation,Zombie_spawn_animation);
     }
     for (int i = 0; i < bloodeffects.size(); i++)
-    {       
+    {
+        if (bloodeffects[i].DeleteMe)
+        {
+            bloodeffects.erase(bloodeffects.begin() + i);
+            break;
+        }
         bloodeffects[i].HandleBloodEffect(zombie_hit_blood_effect, dt);
     }
     for (int i = 0; i < zombies.size(); i++)
@@ -1387,17 +1402,17 @@ void HandleZombieBehaviour(float dt)
             if (zombies[i].health <= 0)
             {
                 Score += 10;
-                Money += 75;
+                Money += 200;
                 zombies[i].isdeath = true;
                 break;
             }
             else if (zombies[i].health > 0 && !zombies[i].isdeath)
             {
                 zombies[i].iszombiehit = true;
-                zombies[i].BloodHitEffect.setPosition(zombies[i].shape.getPosition());
                 BloodEffect newbloodeffect;
                 newbloodeffect.BloodShape.setPosition(zombies[i].shape.getPosition());
                 newbloodeffect.BloodShape.setScale(zombies[i].shape.getScale().x * -0.5f, zombies[i].shape.getScale().y * 0.5f);
+                newbloodeffect.assign_random_number();
                 bloodeffects.push_back(newbloodeffect);
             }
         }
@@ -1811,14 +1826,14 @@ void Draw()
         Player.setScale(2, 2);
         Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
         Gun.setScale(0.5, 0.5);
-        Crosshair.setPosition(Gun.getPosition().x + 15 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 2 + sin(Gun.getRotation() / 180 * pi) * 75);        
+        Crosshair.setPosition(Gun.getPosition().x  + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 75);        
     }
     else
     {
         Player.setScale(-2, 2);
         Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
         Gun.setScale(0.5, -0.5);
-        Crosshair.setPosition(Gun.getPosition().x - 15 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 5 + sin(Gun.getRotation() / 180 * pi) * 75);
+        Crosshair.setPosition(Gun.getPosition().x + 50 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y+ sin(Gun.getRotation() / 180 * pi) * 75);
     }
     test.setPosition(Gun.getPosition().x - 20 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y - 2 + sin(Gun.getRotation() / 180 * pi) * 75);
     switch (current_level)
@@ -1826,7 +1841,7 @@ void Draw()
     case 1:
         Portal_S.setPosition(580, 790);
         speedmachine.setPosition(Vector2f(35, 25));
-        reloadmachine.setPosition(Vector2f(1120, 645));
+        reloadmachine.setPosition(Vector2f(1080, 580));
         pistol_buying.setPosition(Vector2f(150, 95)); 
         smg_buying.setPosition(Vector2f(860, 415)); 
         shotgun_buying.setPosition(Vector2f(1850, 790));
@@ -2171,92 +2186,69 @@ void Draw()
     }
     // tamer 
     /*{  to draw score and coins title }*/
-    Font font;
-    font.loadFromFile("font of score and money.ttf");
-    Text Score_Text ,Money_Text,text3,text4;
-    Score_Text.setFont(font); // select the font 
-    Score_Text.setString(" Score "+ to_string (Score));
-    Score_Text.setCharacterSize(36);
-    Score_Text.setFillColor(sf::Color(155, 215, 0));
-    Score_Text.setPosition(window.mapPixelToCoords(Vector2i(0, 36)));
-
-    //score
-    Money_Text.setFont(font); // select the font 
-    Money_Text.setString(" Money : " + to_string(Money));
-    Money_Text.setCharacterSize(36);
-    Money_Text.setFillColor(sf::Color(155, 215, 0));
-    Money_Text.setPosition(window.mapPixelToCoords(Vector2i(0, 68)));
-
-    text3.setFont(font); // select the font 
-    text3.setString(" Health : " + to_string(Player_Health));
-    text3.setCharacterSize(36);
-    text3.setFillColor(sf::Color(155, 215, 0));
-    text3.setPosition(window.mapPixelToCoords(Vector2i(0, 98)));
-
-    text3.setFont(font); // select the font 
-    text3.setString(" Current Wave : " + to_string(Current_Wave1));
-    text3.setCharacterSize(36);
-    text3.setFillColor(sf::Color(155, 215, 0));
-    text3.setPosition(window.mapPixelToCoords(Vector2i(0, 128)));
-    
-    window.draw(Score_Text);
-    window.draw(Money_Text);
-    window.draw(text3);
-    window.draw(text4);
     /*{end   to draw score and coins title }*/
     /* to draw guns */
     /*pistol*/
     pistol_photo.loadFromFile("pistol.png");
     // tamer
     //{ health bar } 
-    RectangleShape health_bar_background(Vector2f(150, 22));
-    health_bar_background.setFillColor(Color::Blue);
-    health_bar_background.setPosition(window.mapPixelToCoords(Vector2i(15, 3)));
-    if (Player_Health>0)
-    window.draw(health_bar_background);
 
 
     RectangleShape health_bar(Vector2f(140, 15));
-    health_bar.setScale(Vector2f((Player_Health / 10000.00), 1));
-    if ((Player_Health * 100 / 10000.00) >= 30)
-
+    health_bar.setScale(Vector2f((Player_Health / 100.0) * 2, 2));
+    health_bar.setPosition(window.mapPixelToCoords(Vector2i(60, 20)));
+    RectangleShape missing_health_bar(Vector2f(140, 15));
+    missing_health_bar.setFillColor(Color::White);
+    missing_health_bar.setScale(Vector2f(2, 2));
+    missing_health_bar.setPosition(window.mapPixelToCoords(Vector2i(60, 20)));
+    RectangleShape health_bar_background(Vector2f(145 * 2, 20 * 2));
+    health_bar_background.setFillColor(Color::Black);
+    health_bar_background.setPosition(health_bar.getPosition().x - 5 , health_bar.getPosition().y - 5);
+    window.draw(missing_health_bar);
+    if (Player_Health > 0)
     {
-        health_bar.setFillColor(Color::Green);
+        window.draw(health_bar_background);
+        window.draw(missing_health_bar);
+    }
+    if (Player_Health >= 30)
+    {
+        health_bar.setFillColor(Color(136, 8, 8));
     }
     else
     {
         health_bar.setFillColor(Color(136, 8, 8));
     }
-    health_bar.setPosition(window.mapPixelToCoords(Vector2i(20, 8)));
     if (Player_Health > 0)
     window.draw(health_bar);
     //  to  draw heart next to health bar 
     full_heart.setTexture(full_heart_photo);
-    full_heart.setScale(Vector2f(0.07, 0.07));
+    full_heart.setScale(Vector2f(0.15, 0.15));
     full_heart.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
     if (Player_Health > 0)
-    window.draw(full_heart);
+    //window.draw(full_heart);
     // to print health percent text 
     health_precent_text.setFont(normal_font); 
-    health_precent_text.setString(to_string(Player_Health * 100 / 10000));
+    health_precent_text.setScale(2, 2);
+    health_precent_text.setString(to_string(Player_Health));
     health_precent_text.setCharacterSize(12);
-    health_precent_text.setFillColor(Color::White);
-    health_precent_text.setPosition(window.mapPixelToCoords(Vector2i(120, 11)));
+    health_precent_text.setFillColor(Color(128,128,128));
+    health_precent_text.setPosition(health_bar.getPosition().x + 120, health_bar.getPosition().y);
     if (Player_Health >= 0)
         window.draw(health_precent_text);
     // to print  { % }
    
     precent_sign.setFont(normal_font); 
+    precent_sign.setScale(2, 2);
     precent_sign.setString(" % ");
     precent_sign.setCharacterSize(12);
-    precent_sign.setFillColor(Color::White);
-    precent_sign.setPosition(window.mapPixelToCoords(Vector2i(132, 11)));
+    precent_sign.setFillColor(Color(128, 128, 128));
+    precent_sign.setPosition(health_bar.getPosition().x + 150, health_bar.getPosition().y);
     if (Player_Health >= 0)
         window.draw(precent_sign);
     //to draw money photo
     money.setTexture(money_photo);
     money.setScale(Vector2f(0.07, 0.07));
-    money.setPosition(window.mapPixelToCoords(Vector2i(0, 580)));
+    money.setPosition(window.mapPixelToCoords(Vector2i(0, 885)));
     window.draw(money);
     //{  to draw score and coins title and health percent text  }
 
@@ -2266,7 +2258,7 @@ void Draw()
     score_text.setString("Score : " + to_string(Score));
     score_text.setCharacterSize(36);
     score_text.setFillColor(Color(136, 8, 8));
-    score_text.setPosition(window.mapPixelToCoords(Vector2i(0,670 )));
+    score_text.setPosition(window.mapPixelToCoords(Vector2i(0,980 )));
     window.draw(score_text);
 
     // to print money number
@@ -2275,22 +2267,23 @@ void Draw()
     money_text.setString(" : " + to_string(Money));
     money_text.setCharacterSize(36);
     money_text.setFillColor(Color(255, 215, 0));
-    money_text.setPosition(window.mapPixelToCoords(Vector2i(80, 590)));
+    money_text.setPosition(window.mapPixelToCoords(Vector2i(80, 890)));
     window.draw(money_text);
     // to print  current wave  
 
     current_wave.setFont(blood_font);
+    current_wave.setScale(1.5, 1.5);
     current_wave.setString(" Current wave \n\t\t    " + to_string(Current_Wave1));
     current_wave.setCharacterSize(19);
     current_wave.setFillColor(Color(136, 8, 8));
-    current_wave.setPosition(window.mapPixelToCoords(Vector2i(600, 0)));
+    current_wave.setPosition(window.mapPixelToCoords(Vector2i(800, 0)));
     window.draw(current_wave);
     // amo and amo stack
 
     current_ammo_text.setFont(normal_font);
     current_ammo_text.setString(to_string(*current_ammo));
     current_ammo_text.setCharacterSize(22);
-    current_ammo_text.setFillColor(Color::Blue);
+    current_ammo_text.setFillColor(Color::White);
     if (Curr_Gun_state == Gun_State::Smg)
     {
         current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(1233, 577)));
@@ -2309,15 +2302,13 @@ void Draw()
     ammo_stock_text.setString(" /" + to_string(*current_ammo_stock));
     ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(1270, 587)));
     ammo_stock_text.setCharacterSize(12);
-    ammo_stock_text.setFillColor(Color::Blue);
+    ammo_stock_text.setFillColor(Color::White);
 
     if (Curr_Gun_state != Gun_State::Sword)
         window.draw(ammo_stock_text);
     // to draw ammo next to text 
     if (Curr_Gun_state == Gun_State::Pistol)
-    {
-        
-        
+    {     
         ammo_pistol.setTexture(ammo_pistol_photo);
         ammo_pistol.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
         window.draw(ammo_pistol);
