@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <SFML/Audio.hpp>
+#include "Candle/LightSource.hpp"
 
 
 using namespace std;
@@ -20,20 +21,15 @@ float reloadmulti = 1;
 int current_level = 1;
 
 //buying weapon
-bool pistol_buy = false, smg_buy = false, shotgun_buy = false,speed_pow=false,reload_pow=false;
+bool pistol_buy = false, smg_buy = false, shotgun_buy = false,sniper_buy = false,speed_pow=false,reload_pow=false;
 int const money_pistol = 500, money_smg = 1000, money_shotgun = 1500;
 
 
 #define pi 3.14159265
 #define Level1NumWaves 3
 
-#define swordfirerate 0.3f
-#define sworddamage 20
-
-
-
 #define pistolfirerate 0.2f
-#define pistoldamage 5
+#define pistoldamage 6
 #define pistolspread 0
 #define pistolbulletpershot 1
 #define pistolclipsize 9
@@ -43,7 +39,7 @@ int pistolammostock = 240;
 int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.08f
-#define rifledamage 3
+#define rifledamage 4.5
 #define riflespread 0
 #define riflebulletpershot 1
 #define rifleclipsize 30
@@ -53,7 +49,7 @@ int rifleammostock = 250;
 int riflebulletsloaded = rifleclipsize;
 
 #define shotgunfirerate 0.7f
-#define shotgundamage 1
+#define shotgundamage 1.5
 #define shotgunspread 1
 #define shotgunbulletpershot 10
 #define shotgunclipsize 8
@@ -61,6 +57,17 @@ int riflebulletsloaded = rifleclipsize;
 #define ShotGun_bullets_loaded_per_reload 1
 int shotgunammostock = 250;
 int shotgunbulletsloaded = shotgunclipsize;
+
+#define sniperfirerate 1.6f
+#define sniperdamage 25
+#define sniperspread 0
+#define sniperbulletpershot 1
+#define sniperclipsize 5
+#define sniperreloadtime 2
+#define sniper_bullets_loaded_per_reload sniperclipsize
+int sniperammostock = 250;
+int sniperbulletsloaded = sniperclipsize;
+
 
 using namespace sf;
 
@@ -71,9 +78,9 @@ enum state
 state curr_state = state::idle;
 enum Gun_State
 {
-    Sword,Pistol, Smg, Shotgun
+    Pistol, Smg, Shotgun,Sniper
 };
-Gun_State Curr_Gun_state = Gun_State::Sword;
+Gun_State Curr_Gun_state = Gun_State::Pistol;
 struct bullet
 {
     Sprite shape;
@@ -100,8 +107,6 @@ struct bullet
     }
 };
 bool ishit = false;
-Texture Health_Texture;
-vector<Sprite> HealthPacks;
 struct Zombie
 {
     Sprite shape;
@@ -141,7 +146,7 @@ struct Zombie
         SpawnEffect.setPosition(shape.getPosition());
         SpawnEffect.setScale(2, 2);
     }
-    void Zombie_Behaviour(Vector2f player_pos,float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[],Texture Spawn_anim[])
+    void Zombie_Behaviour1(Vector2f player_pos,float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[],Texture Spawn_anim[])
     {
         if (Spawn_imagecounter <= 6)
         {
@@ -284,7 +289,6 @@ void draw_dash_line(); // function to draw the dash effect behind the player
 void calculate_shoot_dir(); // function that calculates the normal direction between the player and the current mouse position
 void buying_weapons(); //function that  open guns for player 
 void select_guns(); // function that switches between guns
-void knife(float dt);
 void Switch_Current_Gun_Attributes(float dt); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
 void Shooting(float dt); //function that handles shooting and spawning new bullets
 void Bullet_Movement_Collision(float dt); //function that handles bullet collision
@@ -318,7 +322,6 @@ void Draw(); // the main drawing function where everything gets drawn on screen
 
 
 //levels
-
 
 
 //door 
@@ -382,22 +385,26 @@ Text ammo_stock_text;
 //all sprites in the game
 Sprite Player;
 RectangleShape Gun(Vector2f(1.f,1.f));
+RectangleShape BlackScreen(Vector2f(4000, 4000));
 Sprite Pistol_S;
 Sprite SMG_S;
 Sprite ShotGun_S;
-Sprite Sword_S;
+Sprite Sniper_S;
 Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
+Sprite sniper_buying;
 Sprite full_heart;
 Sprite money;
 Sprite ammo_shotgun;
 Sprite ammo_pistol;
 Sprite ammo_smg;
+Sprite ammo_box;
 Sprite speedmachine;
 Sprite reloadmachine;
 Sprite Crosshair;
 Sprite Portal_S;
+Sprite void1[4];
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
 
@@ -435,7 +442,8 @@ Texture IdleAnimation[6];
 Texture HitAnimation[4];
 Texture DeathAnimation[9];
 
-Texture Sword_Atk_animation[8];
+Texture sniper_shoot_animations[9];
+Texture sniper_reload_animation[40];
 
 Texture pistol_shoot_animations[12];
 Texture pistol_reload_animation[26];
@@ -452,14 +460,22 @@ Texture zombie_walk_animation[8];
 Texture zombie_atk_animation[7];
 Texture zombie_hit_animation[2];
 Texture zombie_death_animation[6];
+
+Texture zombie2_walk_animation[8];
+Texture zombie2_atk_animation[7];
+Texture zombie2_hit_animation[2];
+Texture zombie2_death_animation[6];
+
 Texture Zombie_spawn_animation[7];
 Texture zombie_hit_blood_effect[10];
 
 Texture CrossHair_Texture;
 
+Texture Health_Texture;
 Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
+Texture sniper_photo;
 Texture full_heart_photo;
 Texture money_photo;
 Texture ammo_shotgun_photo;
@@ -468,6 +484,8 @@ Texture ammo_smg_photo;
 
 Texture speedmachine_photo;
 Texture reloadmachine_photo;
+
+Texture Void;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -518,15 +536,20 @@ Vector2f Norm_dir_vector;
 Vector2f cameraoffset_shake;
 
 //zombie variables
-int Current_Wave1 = 4;
+int Current_Wave1 = 1;
 int TotalSpawnedZombies = 0;
 bool canspawn = true;
 
 VertexArray dasheline(Quads);
 
-std::vector<bullet> bullets;
+SoundBuffer footstepsBuffer;
+Sound footstepsSound;
+
+vector<bullet> bullets;
 vector <Zombie> zombies;
 vector <BloodEffect> bloodeffects;
+vector<Sprite> HealthPacks;
+vector<Sprite> AmmoPacks;
 
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
@@ -535,6 +558,8 @@ int main()
 {
     init_walls();
     GetTextures(); 
+    footstepsSound.setLoop(true);
+    footstepsSound.setVolume(100);
     Player.setTexture(WalkAnimation[0]);
     Player.setOrigin(Vector2f(Player.getGlobalBounds().width /2 , Player.getGlobalBounds().height / 2));
     Player.setPosition(Vector2f(500, 500));
@@ -636,9 +661,13 @@ void GetTextures()
     {
         shotgun_reload_animation[i].loadFromFile("guns/Sprite-sheets/Shotgun_V1.00/reloading/frame (" + std::to_string(i) + ").png");
     }
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 9; i++)
     {
-        Sword_Atk_animation[i].loadFromFile("knife/tile (" + std::to_string(i) + ").png");
+        sniper_shoot_animations[i].loadFromFile("guns/Sprite-sheets/SNIPER_RIFLE_V1.00 [KAR98]/Shooting/frame (" + std::to_string(i) + ").png");
+    }
+    for (int i = 0; i < 40; i++)
+    {
+        sniper_reload_animation[i].loadFromFile("guns/Sprite-sheets/SNIPER_RIFLE_V1.00 [KAR98]/Reloading/frame (" + std::to_string(i) + ").png");
     }
     for (int i = 0; i < 8; i++)
     {
@@ -675,6 +704,7 @@ void GetTextures()
     SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
     ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
     Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
+    Sniper_S.setOrigin(Sniper_S.getLocalBounds().width / 2, Sniper_S.getLocalBounds().height / 2);
     Health_Texture.loadFromFile("health-red_32px.png");
 
     speedmachine_photo.loadFromFile("speedvanding.png");
@@ -692,8 +722,13 @@ void GetTextures()
     pistol_photo.loadFromFile("pistol.png");
     smg_photo.loadFromFile("smg.png");
     shotgun_photo.loadFromFile("shotgun.png");
-
-
+    sniper_photo.loadFromFile("sniper.png");
+    sniper_buying.setTexture(sniper_photo);
+    Void.loadFromFile("void.jpg");
+    for (int i = 0; i < 4; i++)
+    {
+        void1[i].setTexture(Void);
+    }
 }
 //update function
 void Update(float dt)
@@ -725,7 +760,6 @@ void Update(float dt)
         buying_weapons();
         select_guns();
         Switch_Current_Gun_Attributes(dt);
-        knife(dt);
         Shooting(dt);
         Bullet_Movement_Collision(dt);
         Gun_switch_cooldown(dt);
@@ -816,7 +850,17 @@ void Player_Collision(float dt)
     {
         Player_Health = 100;
     }
-    
+    for (int i = 0; i < AmmoPacks.size(); i++)
+    {
+        if (Player.getGlobalBounds().intersects(AmmoPacks[i].getGlobalBounds()))
+        {
+            pistolammostock += 36;
+            rifleammostock += 120 ;
+            shotgunammostock += 16;
+            sniperammostock += 15;
+            AmmoPacks.erase(AmmoPacks.begin() + i);
+        }
+    }
     //vandingmachine
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()) && Money >= speedmoney && speed_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
         playerspeed *= 2;
@@ -844,7 +888,7 @@ void Player_Collision(float dt)
         Money = 0;
         Wall_Bounds.clear();
         HealthPacks.clear();
-        Curr_Gun_state = Sword;
+        Curr_Gun_state = Pistol;
         playerspeed = 175;
         SwtichCurrentWallBounds();
         Current_Wave1 = 0;
@@ -980,55 +1024,39 @@ void calculate_shoot_dir()
 }
 void select_guns()
 {
-    if (Keyboard ::isKeyPressed(Keyboard::Num1))
-    {
-        Curr_Gun_state = Gun_State::Sword;
-        gun_switch_delay_counter = current_fire_rate;
-        fire_rate_counter = 100;
-        trigger = true;
-    }
-    if (Keyboard::isKeyPressed(Keyboard::Num2) && pistol_buy)   
+    if (Keyboard::isKeyPressed(Keyboard::Num1) && pistol_buy)   
     {
         Curr_Gun_state = Gun_State::Pistol;
         gun_switch_delay_counter = current_fire_rate;
         fire_rate_counter = 100;
         trigger = true;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Num3) && smg_buy)
+    if (Keyboard::isKeyPressed(Keyboard::Num2) && smg_buy)
     {
         Curr_Gun_state = Gun_State::Smg;
         gun_switch_delay_counter = current_fire_rate;
         fire_rate_counter = 100;
         trigger = true;
     }
-    if (Keyboard::isKeyPressed(Keyboard::Num4) && shotgun_buy)
+    if (Keyboard::isKeyPressed(Keyboard::Num3) && shotgun_buy)
     {
         Curr_Gun_state = Gun_State::Shotgun;
         gun_switch_delay_counter = current_fire_rate;
         fire_rate_counter = 100;
         trigger = true;
     }
-}
-void knife(float dt)
-{
-    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate)
+    if (Keyboard::isKeyPressed(Keyboard::Num4) && sniper_buy)
     {
-        fire_rate_counter = 0;
-        knifed = true;
-    }
-    else
-    {
-        knifed = false;
+        Curr_Gun_state = Gun_State::Sniper;
+        gun_switch_delay_counter = current_fire_rate;
+        fire_rate_counter = 100;
+        trigger = true;
     }
 }
 void Switch_Current_Gun_Attributes(float dt)
 {
     switch (Curr_Gun_state)
     {
-    case Sword:
-        current_fire_rate = swordfirerate;
-        current_damage = sworddamage;
-        break;
     case Pistol:
         current_fire_rate = pistolfirerate;
         current_damage = pistoldamage;
@@ -1065,79 +1093,89 @@ void Switch_Current_Gun_Attributes(float dt)
         current_bullets_loaded_per_reload = ShotGun_bullets_loaded_per_reload;
         camera_shake_magnitude = 7;
         break;
+    case Sniper:
+        current_fire_rate = sniperfirerate;
+        current_damage = sniperdamage;
+        current_bullets_per_shot = sniperbulletpershot;
+        current_spread = sniperspread;
+        current_ammo = &sniperbulletsloaded;
+        current_ammo_stock = &sniperammostock;
+        current_clip_size = sniperclipsize;
+        current_reload_time = sniperreloadtime * reloadmulti;
+        current_bullets_loaded_per_reload = sniper_bullets_loaded_per_reload;
+        camera_shake_magnitude = 12;
+        break;
     }
-    current_reload_time *= reloadmulti;
 }
 void Shooting(float dt)
 {
     fire_rate_counter += dt;
-    if (Curr_Gun_state != Gun_State ::Sword)
+    if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && *current_ammo > 0 && !isreloading)
     {
-        if (Mouse::isButtonPressed(Mouse::Left) && fire_rate_counter >= current_fire_rate && *current_ammo > 0 && !isreloading)
+        camera_shake_counter += 1;
+        if (camera_shake_counter > camera_shake_duration)
         {
-            camera_shake_counter += 1;
-            if (camera_shake_counter > camera_shake_duration)
-            {
-                camera_shake_counter = camera_shake_duration;
-            }
-            for (int i = 0; i < current_bullets_per_shot; i++)
-            {
-                bullet newbullet;
-                switch (Curr_Gun_state)
-                {
-                case Pistol: newbullet.shape.setPosition(test.getPosition());
-                    break;
-                case Smg:newbullet.shape.setPosition(test.getPosition());
-                    break;
-                case Shotgun:newbullet.shape.setPosition(test.getPosition());
-                    break;
-                }
-                newbullet.id = numberoftotalbulletsshot;
-                Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
-                newbullet.currentvelocity = newbullet.maxvelocity * (Norm_dir_vector + (Offset * 0.2f * current_spread));
-                newbullet.damage = current_damage;
-                bullets.push_back(newbullet);
-                numberoftotalbulletsshot++;
-            }
-            *current_ammo -= 1;
-            fire_rate_counter = 0;
+            camera_shake_counter = camera_shake_duration;
         }
-        if ((*current_ammo <=0 ||(Keyboard::isKeyPressed(Keyboard::R)) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
+        for (int i = 0; i < current_bullets_per_shot; i++)
         {
-            std::cout << gun_image_counter << std::endl;
-            if (!isreloading)
+            bullet newbullet;
+            switch (Curr_Gun_state)
             {
-                gun_image_counter = 0;
-                if (Curr_Gun_state != Gun_State::Shotgun)
-                {
-                    *current_ammo_stock += *current_ammo;
-                    *current_ammo = 0;
-                }
+            case Pistol: newbullet.shape.setPosition(test.getPosition());
+                break;
+            case Smg:newbullet.shape.setPosition(test.getPosition());
+                break;
+            case Shotgun:newbullet.shape.setPosition(test.getPosition());
+                break;
+            case Sniper:newbullet.shape.setPosition(test.getPosition());
+                break;
             }
-            isreloading = true;
-            reload_time_counter += dt;
-            if (reload_time_counter > current_reload_time)
+            newbullet.id = numberoftotalbulletsshot;
+            Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
+            newbullet.currentvelocity = newbullet.maxvelocity * (Norm_dir_vector + (Offset * 0.2f * current_spread));
+            newbullet.damage = current_damage;
+            bullets.push_back(newbullet);
+            numberoftotalbulletsshot++;
+        }
+        *current_ammo -= 1;
+        fire_rate_counter = 0;
+    }
+    if ((*current_ammo <= 0 || (Keyboard::isKeyPressed(Keyboard::R)) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
+    {
+        std::cout << gun_image_counter << std::endl;
+        if (!isreloading)
+        {
+            gun_image_counter = 0;
+            if (Curr_Gun_state != Gun_State::Shotgun)
             {
-                if (*current_ammo_stock >= current_clip_size || (Curr_Gun_state == Gun_State::Shotgun && *current_ammo_stock > 0))
-                {
-                    *current_ammo += current_bullets_loaded_per_reload;
-                    *current_ammo_stock -= current_bullets_loaded_per_reload;
-                }
-                else
-                {
-                    *current_ammo = *current_ammo_stock;
-                    *current_ammo_stock = 0;
-                }
-                reload_time_counter = 0;
+                *current_ammo_stock += *current_ammo;
+                *current_ammo = 0;
             }
-            if ((Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left)) || *current_ammo >= current_clip_size)
+        }
+        isreloading = true;
+        reload_time_counter += dt;
+        if (reload_time_counter > current_reload_time)
+        {
+            if (*current_ammo_stock >= current_clip_size || (Curr_Gun_state == Gun_State::Shotgun && *current_ammo_stock > 0))
             {
-                isreloading = false;
+                *current_ammo += current_bullets_loaded_per_reload;
+                *current_ammo_stock -= current_bullets_loaded_per_reload;
             }
+            else
+            {
+                *current_ammo = *current_ammo_stock;
+                *current_ammo_stock = 0;
+            }
+            reload_time_counter = 0;
+        }
+        if ((Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left)) || *current_ammo >= current_clip_size)
+        {
+            isreloading = false;
+        }
 
-        }
-        //std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
-    } 
+    }
+    //std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
 }
 void Bullet_Movement_Collision(float dt)
 {
@@ -1166,16 +1204,35 @@ void Bullet_Movement_Collision(float dt)
                 {
                     zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 1 / 16, bullets[i].currentvelocity.y * dt * 1 / 16);
                 }
+                else if(Curr_Gun_state == Sniper)
+                {
+                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 10, bullets[i].currentvelocity.y * dt * 10);
+                }
                 else
                 {
                     zombies[j].shape.move(bullets[i].currentvelocity.x * dt, bullets[i].currentvelocity.y * dt);
                 }
                 if (zombies[j].health <= 0)
                 {
-                    Sprite newhealthpack;
-                    newhealthpack.setTexture(Health_Texture);
-                    newhealthpack.setPosition(zombies[j].shape.getPosition());
-                    HealthPacks.push_back(newhealthpack);
+                    int random_num = rand() % 100;
+                    if (random_num > 50 && random_num < 74)
+                    {
+
+                        Sprite newhealthpack;
+                        newhealthpack.setTexture(Health_Texture);
+                        newhealthpack.setPosition(zombies[j].shape.getPosition());
+                        HealthPacks.push_back(newhealthpack);
+                        break;
+
+                    }
+                    else if (random_num > 75 && random_num < 100)
+                    {
+                        Sprite newammostock;
+                        newammostock.setTexture(ammo_smg_photo);
+                        newammostock.setPosition(zombies[j].shape.getPosition());
+                        AmmoPacks.push_back(newammostock);
+                        break;
+                    }
                     zombies[j].isdeath = true;
                     Score += 10;
                     Money += 175;
@@ -1208,10 +1265,6 @@ void Guns_Animation_Handling(float dt)
         }
         switch (Curr_Gun_state)
         {
-        case Sword:
-            Sword_S.setTexture(Sword_Atk_animation[ImageCounter]);
-            gun_frames = 8;
-            break;
         case Pistol:
             Pistol_S.setTexture(pistol_shoot_animations[gun_image_counter]);
             gun_frames = 12;
@@ -1224,13 +1277,16 @@ void Guns_Animation_Handling(float dt)
             ShotGun_S.setTexture(shotgun_shoot_animation[gun_image_counter]);
             gun_frames = 14;
             break;
+        case Sniper:
+            Sniper_S.setTexture(sniper_shoot_animations[gun_image_counter]);
+            gun_frames = 9;
         }
     }
-    else if (Keyboard::isKeyPressed(Keyboard::R) && Curr_Gun_state != Gun_State::Sword)
+    else if (Keyboard::isKeyPressed(Keyboard::R))
     {
         trigger = true;
     }
-    else if (isreloading && *current_ammo_stock > 0 && Curr_Gun_state != Gun_State::Sword)
+    else if (isreloading && *current_ammo_stock > 0 && Curr_Gun_state)
     {
         if (trigger)
         {
@@ -1252,6 +1308,10 @@ void Guns_Animation_Handling(float dt)
             ShotGun_S.setTexture(shotgun_reload_animation[gun_image_counter]);
             gun_frames = 14;
             break;
+        case Sniper:
+            Sniper_S.setTexture(sniper_reload_animation[gun_image_counter]);
+            gun_frames = 40;
+            break;
         }
     }
     else
@@ -1259,7 +1319,7 @@ void Guns_Animation_Handling(float dt)
         SMG_S.setTexture(SMG_Shoot_Animations[0]);
         Pistol_S.setTexture(pistol_shoot_animations[0]);
         ShotGun_S.setTexture(shotgun_shoot_animation[0]);
-        Sword_S.setTexture(Sword_Atk_animation[0]);
+        Sniper_S.setTexture(sniper_shoot_animations[0]);
         gun_switch_delay_counter = current_fire_rate;
         trigger = true;
         isshooting = false;
@@ -1268,9 +1328,9 @@ void Guns_Animation_Handling(float dt)
     {
         Gun_UpdateAnimationCounter(dt, gun_frames, current_reload_time / (double)gun_frames);
     }
-    else if(!isreloading || Curr_Gun_state == Gun_State::Sword)
+    else
     {
-        Gun_UpdateAnimationCounter(dt, gun_frames, current_fire_rate /(double) gun_frames );
+        Gun_UpdateAnimationCounter(dt, gun_frames, current_fire_rate / (double)gun_frames );
     }
 }
 void Gun_switch_cooldown(float dt)
@@ -1314,6 +1374,7 @@ void camera_shake(float dt)
 }
 
 //zombie functions
+
 void SpawnZombiesWaves(float dt)
 {
     float multiplier = Current_Wave1 / (float)Level1NumWaves;
@@ -1330,7 +1391,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 1 * Current_Wave1)
+    if (TotalSpawnedZombies >= 50 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -1361,7 +1422,7 @@ void HandleZombieBehaviour(float dt)
             zombies.erase(zombies.begin() + i);
             break;
         }
-        zombies[i].Zombie_Behaviour(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation,Zombie_spawn_animation);
+        zombies[i].Zombie_Behaviour1(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation,Zombie_spawn_animation);
     }
     for (int i = 0; i < bloodeffects.size(); i++)
     {
@@ -1408,26 +1469,6 @@ void HandleZombieBehaviour(float dt)
                         zombies[i].shape.move(0, 1500 * dt);
                     }
                 }
-            }
-        }
-        if (knifed && zombies[i].shape.getGlobalBounds().intersects(Crosshair.getGlobalBounds()))
-        {
-            zombies[i].health -= current_damage;
-            if (zombies[i].health <= 0)
-            {
-                Score += 10;
-                Money += 200;
-                zombies[i].isdeath = true;
-                break;
-            }
-            else if (zombies[i].health > 0 && !zombies[i].isdeath)
-            {
-                zombies[i].iszombiehit = true;
-                BloodEffect newbloodeffect;
-                newbloodeffect.BloodShape.setPosition(zombies[i].shape.getPosition());
-                newbloodeffect.BloodShape.setScale(zombies[i].shape.getScale().x * -0.5f, zombies[i].shape.getScale().y * 0.5f);
-                newbloodeffect.assign_random_number();
-                bloodeffects.push_back(newbloodeffect);
             }
         }
         for (int j = 0; j < zombies.size(); j++)
@@ -1859,6 +1900,7 @@ void Draw()
         pistol_buying.setPosition(Vector2f(150, 95)); 
         smg_buying.setPosition(Vector2f(860, 415)); 
         shotgun_buying.setPosition(Vector2f(1850, 790));
+        sniper_buying.setPosition(Vector2f(500, 500));
         //upper wall
 
         for (int i = 0; i < 5; i++)
@@ -2118,6 +2160,14 @@ void Draw()
         }
         break;
     }
+    void1[0].setPosition(0, 1080);
+    void1[1].setPosition(0, -2000);
+    void1[2].setPosition(1920, 0);
+    void1[3].setPosition(-2864, 0);
+    for (int i = 0; i < 4; i++)
+    {
+        window.draw(void1[i]);
+    }
     window.draw(speedmachine);
     window.draw(reloadmachine);
     Portal_S.setOrigin(Portal_S.getLocalBounds().width / 2, Portal_S.getLocalBounds().height / 2);
@@ -2166,37 +2216,39 @@ void Draw()
     
     switch (Curr_Gun_state)
     {
-    case Sword:
-        Sword_S.setScale(Gun.getScale().x, Gun.getScale().y);
-        Sword_S.setPosition(Gun.getPosition());
-        Sword_S.setRotation(Gun.getRotation());
-        window.draw(Sword_S);
-        break;
     case Pistol:
         Pistol_S.setScale(Gun.getScale().x * 3/4, Gun.getScale().y * 3 / 4);
         Pistol_S.setPosition(Gun.getPosition());
         Pistol_S.setRotation(Gun.getRotation());
         window.draw(Pistol_S);
-        Crosshair.setPosition(MousePos);
         break;
     case Smg:
         SMG_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         SMG_S.setPosition(Gun.getPosition());
         SMG_S.setRotation(Gun.getRotation());
         window.draw(SMG_S);
-        Crosshair.setPosition(MousePos);
         break;
     case Shotgun:
         ShotGun_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         ShotGun_S.setPosition(Gun.getPosition());
         ShotGun_S.setRotation(Gun.getRotation());
         window.draw(ShotGun_S);
-        Crosshair.setPosition(MousePos);
+        break;
+    case Sniper:
+        Sniper_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
+        Sniper_S.setPosition(Gun.getPosition());
+        Sniper_S.setRotation(Gun.getRotation());
+        window.draw(Sniper_S);
         break;
     }
+    Crosshair.setPosition(MousePos);
     for (int i = 0; i < HealthPacks.size(); i++)
     {
         window.draw(HealthPacks[i]);
+    }
+    for (int i = 0; i < AmmoPacks.size(); i++)
+    {
+        window.draw(AmmoPacks[i]);
     }
     // tamer 
     /*{  to draw score and coins title }*/
@@ -2307,8 +2359,7 @@ void Draw()
     {
         current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(1250, 577)));
     }
-    if (Curr_Gun_state != Gun_State::Sword)
-        window.draw(current_ammo_text);
+    window.draw(current_ammo_text);
 
     //{to print  amo stock text }
 
@@ -2318,8 +2369,7 @@ void Draw()
     ammo_stock_text.setCharacterSize(12);
     ammo_stock_text.setFillColor(Color::White);
 
-    if (Curr_Gun_state != Gun_State::Sword)
-        window.draw(ammo_stock_text);
+    window.draw(ammo_stock_text);
     // to draw ammo next to text 
     if (Curr_Gun_state == Gun_State::Pistol)
     {     
@@ -2345,6 +2395,10 @@ void Draw()
      to draw guns 
      pistol*/
     pistol_buying.setTexture(pistol_photo);
+    if (!sniper_buy)
+    {
+        window.draw(sniper_buying);
+    }
     if (!pistol_buy)
     window.draw(pistol_buying);
     //smg
@@ -2387,6 +2441,12 @@ void buying_weapons()
     {
         Money -= money_shotgun;
         shotgun_buy = true;
+        Score += 100;
+    }
+    if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()) && Money >= 2000 && !sniper_buy && Keyboard::isKeyPressed(Keyboard::E))
+    {
+        Money -= 2000;
+        sniper_buy = true;
         Score += 100;
     }
 }
