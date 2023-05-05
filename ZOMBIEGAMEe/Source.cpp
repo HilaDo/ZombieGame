@@ -21,7 +21,7 @@ float reloadmulti = 1;
 int current_level = 1;
 
 //buying weapon
-bool pistol_buy = false, smg_buy = false, shotgun_buy = false,sniper_buy = false,speed_pow=false,reload_pow=false;
+bool pistol_buy = false, smg_buy = false, shotgun_buy = false,sniper_buy = false, minigun_buy =true,speed_pow=false,reload_pow=false;
 int const money_pistol = 500, money_smg = 1000, money_shotgun = 1500;
 
 
@@ -68,6 +68,15 @@ int shotgunbulletsloaded = shotgunclipsize;
 int sniperammostock = 250;
 int sniperbulletsloaded = sniperclipsize;
 
+#define minigunfirerate 0.05
+#define minigundamage 1.5
+#define minigunspread 1.2
+#define minigunbulletpershot 5
+#define minigunclipsize 200
+#define minigunreloadtime 0
+#define minigun_bullets_loaded_per_reload 1
+int minigunammostock = 9999999999;
+int minigunbulletsloaded = minigunclipsize;
 
 using namespace sf;
 
@@ -78,7 +87,7 @@ enum state
 state curr_state = state::idle;
 enum Gun_State
 {
-    Pistol, Smg, Shotgun,Sniper
+    Pistol, Smg, Shotgun,Sniper,MiniGun
 };
 Gun_State Curr_Gun_state = Gun_State::Pistol;
 struct bullet
@@ -390,6 +399,7 @@ Sprite Pistol_S;
 Sprite SMG_S;
 Sprite ShotGun_S;
 Sprite Sniper_S;
+Sprite MiniGun_S;
 Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
@@ -453,6 +463,8 @@ Texture SMG_Reload_Animations[16];
 
 Texture shotgun_shoot_animation[14];
 Texture shotgun_reload_animation[14];
+
+Texture MiniGun_Image;
 
 Texture bullet_animation[5];
 
@@ -697,14 +709,11 @@ void GetTextures()
     {
         PortalAnimation[i].loadFromFile("FX/WarpGate/tile" + std::to_string(i) + ".png");
     }
+    MiniGun_Image.loadFromFile("minigun.png");
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
     Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2 + 50, Crosshair.getLocalBounds().height / 2);
     Crosshair.setScale(0.3, 0.3);
-    SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
-    ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
-    Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 +10, Pistol_S.getLocalBounds().height / 2+20 );
-    Sniper_S.setOrigin(Sniper_S.getLocalBounds().width / 2, Sniper_S.getLocalBounds().height / 2);
     Health_Texture.loadFromFile("health-red_32px.png");
 
     speedmachine_photo.loadFromFile("speedvanding.png");
@@ -1052,6 +1061,13 @@ void select_guns()
         fire_rate_counter = 100;
         trigger = true;
     }
+    if (Keyboard::isKeyPressed(Keyboard::Num5) && minigun_buy)
+    {
+        Curr_Gun_state = Gun_State::MiniGun;
+        gun_switch_delay_counter = current_fire_rate;
+        fire_rate_counter = 100;
+        trigger = true;
+    }
 }
 void Switch_Current_Gun_Attributes(float dt)
 {
@@ -1105,6 +1121,17 @@ void Switch_Current_Gun_Attributes(float dt)
         current_bullets_loaded_per_reload = sniper_bullets_loaded_per_reload;
         camera_shake_magnitude = 12;
         break;
+    case MiniGun:
+        current_fire_rate = minigunfirerate;
+        current_damage = minigundamage;
+        current_bullets_per_shot = minigunbulletpershot;
+        current_spread = minigunspread;
+        current_ammo = &minigunbulletsloaded;
+        current_ammo_stock = &minigunammostock;
+        current_clip_size = minigunclipsize;
+        current_reload_time = minigunreloadtime * reloadmulti;
+        current_bullets_loaded_per_reload = minigun_bullets_loaded_per_reload;
+        camera_shake_magnitude = 20;
     }
 }
 void Shooting(float dt)
@@ -1120,17 +1147,7 @@ void Shooting(float dt)
         for (int i = 0; i < current_bullets_per_shot; i++)
         {
             bullet newbullet;
-            switch (Curr_Gun_state)
-            {
-            case Pistol: newbullet.shape.setPosition(test.getPosition());
-                break;
-            case Smg:newbullet.shape.setPosition(test.getPosition());
-                break;
-            case Shotgun:newbullet.shape.setPosition(test.getPosition());
-                break;
-            case Sniper:newbullet.shape.setPosition(test.getPosition());
-                break;
-            }
+            newbullet.shape.setPosition(test.getPosition());
             newbullet.id = numberoftotalbulletsshot;
             Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
             newbullet.currentvelocity = newbullet.maxvelocity * (Norm_dir_vector + (Offset * 0.2f * current_spread));
@@ -1280,6 +1297,8 @@ void Guns_Animation_Handling(float dt)
         case Sniper:
             Sniper_S.setTexture(sniper_shoot_animations[gun_image_counter]);
             gun_frames = 9;
+        case MiniGun:
+            MiniGun_S.setTexture(MiniGun_Image);
         }
     }
     else if (Keyboard::isKeyPressed(Keyboard::R))
@@ -1312,6 +1331,8 @@ void Guns_Animation_Handling(float dt)
             Sniper_S.setTexture(sniper_reload_animation[gun_image_counter]);
             gun_frames = 40;
             break;
+        case MiniGun:
+            MiniGun_S.setTexture(MiniGun_Image);
         }
     }
     else
@@ -1321,6 +1342,7 @@ void Guns_Animation_Handling(float dt)
         ShotGun_S.setTexture(shotgun_shoot_animation[0]);
         Sniper_S.setTexture(sniper_shoot_animations[0]);
         gun_switch_delay_counter = current_fire_rate;
+        MiniGun_S.setTexture(MiniGun_Image);
         trigger = true;
         isshooting = false;
     }
@@ -2217,28 +2239,39 @@ void Draw()
     switch (Curr_Gun_state)
     {
     case Pistol:
+        Pistol_S.setOrigin(Pistol_S.getLocalBounds().width / 2 + 10, Pistol_S.getLocalBounds().height / 2 + 20);
         Pistol_S.setScale(Gun.getScale().x * 3/4, Gun.getScale().y * 3 / 4);
         Pistol_S.setPosition(Gun.getPosition());
         Pistol_S.setRotation(Gun.getRotation());
         window.draw(Pistol_S);
         break;
     case Smg:
+        SMG_S.setOrigin(SMG_S.getLocalBounds().width / 2 + 25, SMG_S.getLocalBounds().height / 2 + 15);
         SMG_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         SMG_S.setPosition(Gun.getPosition());
         SMG_S.setRotation(Gun.getRotation());
         window.draw(SMG_S);
         break;
     case Shotgun:
+        ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 2 + 25, ShotGun_S.getLocalBounds().height / 2 + 15);
         ShotGun_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         ShotGun_S.setPosition(Gun.getPosition());
         ShotGun_S.setRotation(Gun.getRotation());
         window.draw(ShotGun_S);
         break;
     case Sniper:
+        Sniper_S.setOrigin(Sniper_S.getLocalBounds().width / 2, Sniper_S.getLocalBounds().height / 2);
         Sniper_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         Sniper_S.setPosition(Gun.getPosition());
         Sniper_S.setRotation(Gun.getRotation());
         window.draw(Sniper_S);
+        break;
+    case MiniGun:
+        MiniGun_S.setOrigin(MiniGun_S.getLocalBounds().width / 2, MiniGun_S.getLocalBounds().height / 2);
+        MiniGun_S.setScale(Gun.getScale().x * 4, Gun.getScale().y * 4);
+        MiniGun_S.setPosition(Gun.getPosition());
+        MiniGun_S.setRotation(Gun.getRotation());
+        window.draw(MiniGun_S);
         break;
     }
     Crosshair.setPosition(MousePos);
