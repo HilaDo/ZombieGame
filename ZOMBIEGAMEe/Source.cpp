@@ -12,18 +12,20 @@ using namespace std;
 //to be displayed on ui
 int Player_Health = 10000;
 int Score= 0;
-int Money= 0;
+int Money=200000;
 int const speedmoney = 2000;
 int const reloadmoney = 2000;
 float speedmulti = 1;
 float reloadmulti = 1;
 
-int current_level = 1;
+int current_level = 3;
 
 //buying weapon
-bool pistol_buy = false, smg_buy = false, shotgun_buy = false,sniper_buy = false, minigun_buy =true,speed_pow=false,reload_pow=false;
-int const money_pistol = 500, money_smg = 1000, money_shotgun = 1500;
-
+bool  smg_buy = false, shotgun_buy = false,sniper_buy = false, minigun_buy =false,speed_pow=false,reload_pow=false;
+int const  money_smg = 1000, money_shotgun = 1500, money_sniper = 2000, money_minigun = 5000;
+//to cheak player intersects
+bool smg_player_intersects = false, sniper_player_intersects = false;
+bool shotgun_player_intersects = false, minigun_player_intersects = false;
 
 #define pi 3.14159265
 #define Level1NumWaves 3
@@ -394,6 +396,12 @@ Text health_precent_text;
 Text current_wave;
 Text current_ammo_text;
 Text ammo_stock_text;
+Text money_smg_text;
+Text money_sniper_text;
+Text money_shotgun_text; 
+Text money_minigun_text;
+Text speedmachine_text;
+Text reloadmachine_text;
 //all sprites in the game
 Sprite Player;
 RectangleShape Gun(Vector2f(1.f,1.f));
@@ -407,6 +415,7 @@ Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
 Sprite sniper_buying;
+Sprite minigun_buying;
 Sprite full_heart;
 Sprite money;
 Sprite ammo_shotgun;
@@ -491,6 +500,7 @@ Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
 Texture sniper_photo;
+Texture minigun_photo;
 Texture full_heart_photo;
 Texture money_photo;
 Texture ammo_shotgun_photo;
@@ -589,7 +599,7 @@ int main()
     inf >> Player_Health;
     inf >> Score;
     inf.close();
-
+    
     SwtichCurrentWallBounds();
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
@@ -732,11 +742,11 @@ void GetTextures()
     ammo_pistol_photo.loadFromFile("ammo_pistol.png");
     full_heart_photo.loadFromFile("full_heart.png");
     money_photo.loadFromFile("money.png");
-    pistol_photo.loadFromFile("pistol.png");
     smg_photo.loadFromFile("smg.png");
     shotgun_photo.loadFromFile("shotgun.png");
     sniper_photo.loadFromFile("sniper.png");
     sniper_buying.setTexture(sniper_photo);
+    minigun_photo.loadFromFile("minigun.png");
     Void.loadFromFile("void.jpg");
     for (int i = 0; i < 4; i++)
     {
@@ -885,17 +895,41 @@ void Player_Collision(float dt)
         Money -= speedmoney;
         speed_pow = true;
     }
-
     if (Player.getGlobalBounds().intersects(reloadmachine.getGlobalBounds()) && Money >= reloadmoney && reload_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
         reloadmulti = 0.5f;
         Money -= reloadmoney;
         reload_pow = true;
     }
+    if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()))
+    {
+        smg_player_intersects = true;
+    }
+    else 
+        smg_player_intersects = false;
+    if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()))
+    {
+        sniper_player_intersects = true;
+    }
+    else
+        sniper_player_intersects = false;
+    if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()))
+    {
+        shotgun_player_intersects = true;
+    }
+    else
+        shotgun_player_intersects = false;
+    if (Player.getGlobalBounds().intersects(minigun_buying.getGlobalBounds()))
+    {
+        minigun_player_intersects = true;
+    }
+    else
+        minigun_player_intersects = false;
+
     if (Player.getGlobalBounds().intersects(Portal_S.getGlobalBounds()) && PortalOpen && Keyboard::isKeyPressed(Keyboard::E))
     {
         PortalOpen = false;
         current_level++;
-        pistol_buy = false;
+
         smg_buy = false;
         shotgun_buy = false;
         speed_pow = false;
@@ -1041,7 +1075,7 @@ void calculate_shoot_dir()
 }
 void select_guns()
 {
-    if (Keyboard::isKeyPressed(Keyboard::Num1) && pistol_buy)   
+    if (Keyboard::isKeyPressed(Keyboard::Num1) )   
     {
         Curr_Gun_state = Gun_State::Pistol;
         gun_switch_delay_counter = current_fire_rate;
@@ -1927,9 +1961,10 @@ void Draw()
         Portal_S.setPosition(580, 790);
         speedmachine.setPosition(Vector2f(200, 25));
         reloadmachine.setPosition(Vector2f(1080, 580)); 
-        smg_buying.setPosition(Vector2f(860, 415)); 
-        shotgun_buying.setPosition(Vector2f(1700, 790));
-        sniper_buying.setPosition(Vector2f(500, 700));
+        smg_buying.setPosition(Vector2f(388, 290)); //860,415
+        shotgun_buying.setPosition(Vector2f(1431.29 , 278.14));//1700, 790
+        sniper_buying.setPosition(Vector2f(1400, 790));//500, 700
+        minigun_buying.setPosition(Vector2f(500, 790));//500, 200
         //upper wall
 
         for (int i = 0; i < 5; i++)
@@ -2044,9 +2079,10 @@ void Draw()
         Portal_S.setPosition(50, 50);
         speedmachine.setPosition(Vector2f(35, 25));
         reloadmachine.setPosition(Vector2f(850, 25));
-        smg_buying.setPosition(Vector2f(200, 415));
-        shotgun_buying.setPosition(Vector2f(1000, 790));
-        sniper_buying.setPosition(Vector2f(1700, 700));
+        smg_buying.setPosition(Vector2f(510, 190));
+        shotgun_buying.setPosition(Vector2f(1109.53, 195.759));
+        sniper_buying.setPosition(Vector2f(1590.27, 790.389));
+        minigun_buying.setPosition(Vector2f(1573.87, 196.034));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -2135,9 +2171,10 @@ void Draw()
         Portal_S.setPosition(50, 50);
         speedmachine.setPosition(Vector2f(35, 25));
         reloadmachine.setPosition(Vector2f(1700, 25));
-        smg_buying.setPosition(Vector2f(200, 415));
-        shotgun_buying.setPosition(Vector2f(500, 790));
-        sniper_buying.setPosition(Vector2f(1700, 700));
+        smg_buying.setPosition(Vector2f(305.312, 280.694));
+        shotgun_buying.setPosition(Vector2f(1375.64, 276.671));
+        sniper_buying.setPosition(Vector2f(489.806, 793.286));
+        minigun_buying.setPosition(Vector2f(1575.74, 795.806));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -2163,6 +2200,7 @@ void Draw()
         }
 
         //mid walls
+
         Hwall3[10].setPosition(0, 500);
         Hwall3[11].setPosition(410, 500);
         Hwall3[12].setPosition(1090, 500);
@@ -2312,12 +2350,7 @@ void Draw()
     {
         window.draw(AmmoPacks[i]);
     }
-    // tamer 
-    /*{  to draw score and coins title }*/
-    /*{end   to draw score and coins title }*/
-    /* to draw guns */
-    /*pistol*/
-    pistol_photo.loadFromFile("pistol.png");
+    
     // tamer
     //{ health bar } 
 
@@ -2453,9 +2486,57 @@ void Draw()
         ammo_shotgun.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
         window.draw(ammo_shotgun);
     }
+    //smg price text 
+    money_smg_text.setFont(normal_font);
+    money_smg_text.setString("$"+to_string(money_smg));
+    money_smg_text.setCharacterSize(9);
+    money_smg_text.setFillColor(Color:: White);
+    money_smg_text.setPosition(smg_buying.getPosition().x+20, smg_buying.getPosition().y);
+    if(smg_player_intersects && !smg_buy)
+    window.draw(money_smg_text);
+    //sniper price text 
+    money_sniper_text.setFont(normal_font);
+    money_sniper_text.setString("$" + to_string(money_sniper));
+    money_sniper_text.setCharacterSize(9);
+    money_sniper_text.setFillColor(Color::White);
+    money_sniper_text.setPosition(sniper_buying.getPosition().x + 20, sniper_buying.getPosition().y);
+    if (sniper_player_intersects && !sniper_buy)
+        window.draw(money_sniper_text);
+    //shotgun price text 
+    money_shotgun_text.setFont(normal_font);
+    money_shotgun_text.setString("$" + to_string(money_shotgun));
+    money_shotgun_text.setCharacterSize(9);
+    money_shotgun_text.setFillColor(Color::White);
+    money_shotgun_text.setPosition(shotgun_buying.getPosition().x + 20, shotgun_buying.getPosition().y);
+    if (shotgun_player_intersects && !shotgun_buy)
+        window.draw(money_shotgun_text);
+    // minigun price text
+    money_minigun_text.setFont(normal_font);
+    money_minigun_text.setString("$" + to_string(money_minigun));
+    money_minigun_text.setCharacterSize(9);
+    money_minigun_text.setFillColor(Color::White);
+    money_minigun_text.setPosition(minigun_buying.getPosition().x + 14, minigun_buying.getPosition().y-12);
+    if (minigun_player_intersects && !minigun_buy)
+        window.draw(money_minigun_text);
+    //speedmachine price text 
+    speedmachine_text.setFont(normal_font);
+    speedmachine_text.setString("$" + to_string(speedmoney));
+    speedmachine_text.setCharacterSize(9);
+    speedmachine_text.setFillColor(Color::White);
+    speedmachine_text.setPosition(speedmachine.getPosition().x + 20, speedmachine.getPosition().y - 12);
+    if(Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()))
+        window.draw(speedmachine_text);
+    //
+    reloadmachine_text.setFont(normal_font);
+    reloadmachine_text.setString("$" + to_string(reloadmoney));
+    reloadmachine_text.setCharacterSize(9);
+    reloadmachine_text.setFillColor(Color::White);
+    reloadmachine_text.setPosition(reloadmachine.getPosition().x + 20, reloadmachine.getPosition().y - 12);
+    if (Player.getGlobalBounds().intersects(reloadmachine.getGlobalBounds()))
+        window.draw(reloadmachine_text);
     /* {end drawing ui }
      to draw guns 
-     pistol*/
+     */
     
     if (!sniper_buy)
     {
@@ -2472,6 +2553,15 @@ void Draw()
     
     if (!shotgun_buy)
         window.draw(shotgun_buying);
+   
+    //minigun
+    minigun_buying.setTexture(minigun_photo);
+    minigun_buying.setScale(2, 1.5);
+    if (!minigun_buy)
+    {
+
+        window.draw(minigun_buying);
+    }
     //end draw guns 
 
     //vandingmachine
@@ -2486,28 +2576,28 @@ void Draw()
 
 void buying_weapons()
 {
-    if (Player.getGlobalBounds().intersects(pistol_buying.getGlobalBounds()) && Money >= money_pistol && !pistol_buy && Keyboard::isKeyPressed(Keyboard::E))
-    {
-        Money -= money_pistol;
-        pistol_buy = true;
-        Score += 100;
-    }
-    if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()) && Money >= money_smg && !smg_buy && Keyboard::isKeyPressed(Keyboard::E))
+    if (smg_player_intersects && Money >= money_smg && !smg_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= money_smg;
         smg_buy = true;
         Score += 100;
     }
-    if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()) && Money >= money_shotgun && !shotgun_buy && Keyboard::isKeyPressed(Keyboard::E))
+    if (shotgun_player_intersects && Money >= money_shotgun && !shotgun_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= money_shotgun;
         shotgun_buy = true;
         Score += 100;
     }
-    if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()) && Money >= 2000 && !sniper_buy && Keyboard::isKeyPressed(Keyboard::E))
+    if (sniper_player_intersects && Money >= money_sniper && !sniper_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
-        Money -= 2000;
+        Money -= money_sniper;
         sniper_buy = true;
+        Score += 100;
+    }
+    if (minigun_player_intersects && Money >= money_minigun && !minigun_buy && Keyboard::isKeyPressed(Keyboard::E))
+    {
+        Money -= money_minigun;
+        minigun_buy = true;
         Score += 100;
     }
 }
