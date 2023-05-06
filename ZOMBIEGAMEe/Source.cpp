@@ -368,6 +368,9 @@ Sprite background1[7][10];
 Texture VwallT1, HwallT1;
 Sprite Vwall1[15], Hwall1[15];
 
+Texture lantren;
+Sprite lantren1[17];
+
 Texture ME;
 Sprite ME1[7];
 
@@ -629,6 +632,7 @@ void init_walls()
 }
 void GetTextures()
 {
+    lantren.loadFromFile("lantren 1.png");
     for (int i = 0; i < 8; i++)
     {
         WalkAnimation[i].loadFromFile("anim by rows/walk/tile" + std::to_string(i) + ".png");
@@ -737,6 +741,10 @@ void GetTextures()
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
+    }
+    for (int i = 0; i < 15; i++)
+    {
+        lantren1[i].setTexture(lantren);
     }
 }
 //update function
@@ -1037,35 +1045,35 @@ void select_guns()
     {
         Curr_Gun_state = Gun_State::Pistol;
         gun_switch_delay_counter = current_fire_rate;
-        fire_rate_counter = 100;
+   
         trigger = true;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num2) && smg_buy)
     {
         Curr_Gun_state = Gun_State::Smg;
         gun_switch_delay_counter = current_fire_rate;
-        fire_rate_counter = 100;
+     
         trigger = true;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num3) && shotgun_buy)
     {
         Curr_Gun_state = Gun_State::Shotgun;
         gun_switch_delay_counter = current_fire_rate;
-        fire_rate_counter = 100;
+  
         trigger = true;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num4) && sniper_buy)
     {
         Curr_Gun_state = Gun_State::Sniper;
         gun_switch_delay_counter = current_fire_rate;
-        fire_rate_counter = 100;
+   
         trigger = true;
     }
     if (Keyboard::isKeyPressed(Keyboard::Num5) && minigun_buy)
     {
         Curr_Gun_state = Gun_State::MiniGun;
         gun_switch_delay_counter = current_fire_rate;
-        fire_rate_counter = 100;
+      
         trigger = true;
     }
 }
@@ -1917,17 +1925,17 @@ void Draw()
     {
     case 1:
         Portal_S.setPosition(580, 790);
-        speedmachine.setPosition(Vector2f(35, 25));
-        reloadmachine.setPosition(Vector2f(1080, 580));
-        pistol_buying.setPosition(Vector2f(150, 95)); 
+        speedmachine.setPosition(Vector2f(200, 25));
+        reloadmachine.setPosition(Vector2f(1080, 580)); 
         smg_buying.setPosition(Vector2f(860, 415)); 
-        shotgun_buying.setPosition(Vector2f(1850, 790));
-        sniper_buying.setPosition(Vector2f(500, 500));
+        shotgun_buying.setPosition(Vector2f(1700, 790));
+        sniper_buying.setPosition(Vector2f(500, 700));
         //upper wall
 
         for (int i = 0; i < 5; i++)
         {
             Hwall1[i].setPosition(405 * i, 0);
+            lantren1[i].setPosition((405 * i) + 100, 20);
         }
         //lower wall
 
@@ -1940,18 +1948,21 @@ void Draw()
         for (int i = 0; i < 4; i++)
         {
             Vwall1[i].setPosition(0, (405 * i) + 40);
+            lantren1[i + 9].setPosition(20, (405 * i) + 85);
         }
         //Right wall
 
         for (int i = 4; i < 8; i++)
         {
             Vwall1[i].setPosition(1890, (405 * (i - 4)) + 40);
+            lantren1[i + 8].setPosition(1880, (405 * (i - 4)) + 85);
         }
 
         //mid walls
         for (int i = 10; i < 14; i++)
         {
             Hwall1[i].setPosition((405 * (i - 10)) + 30, 550);
+            lantren1[i - 5].setPosition((405 * (i - 10)) + 130, 570);
         }
         Vwall1[8].setPosition(1050, 575);
         Vwall1[9].setPosition(800, 245);
@@ -1998,6 +2009,10 @@ void Draw()
         {
             window.draw(ME1[i]);
         }
+        for (int i = 9; i < 17; i++)
+        {
+            window.draw(lantren1[i]);
+        }
         for (int i = 0; i < 10; i++)
         {
             window.draw(Vwall1[i]);
@@ -2020,9 +2035,18 @@ void Draw()
         {
             window.draw(ME1[i]);
         }
+        for (int i = 0; i < 9; i++)
+        {
+            window.draw(lantren1[i]);
+        }
         break;
     case 2:
         Portal_S.setPosition(50, 50);
+        speedmachine.setPosition(Vector2f(35, 25));
+        reloadmachine.setPosition(Vector2f(850, 25));
+        smg_buying.setPosition(Vector2f(200, 415));
+        shotgun_buying.setPosition(Vector2f(1000, 790));
+        sniper_buying.setPosition(Vector2f(1700, 700));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -2109,6 +2133,11 @@ void Draw()
         break;
     case 3:
         Portal_S.setPosition(50, 50);
+        speedmachine.setPosition(Vector2f(35, 25));
+        reloadmachine.setPosition(Vector2f(1700, 25));
+        smg_buying.setPosition(Vector2f(200, 415));
+        shotgun_buying.setPosition(Vector2f(500, 790));
+        sniper_buying.setPosition(Vector2f(1700, 700));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -2427,13 +2456,12 @@ void Draw()
     /* {end drawing ui }
      to draw guns 
      pistol*/
-    pistol_buying.setTexture(pistol_photo);
+    
     if (!sniper_buy)
     {
         window.draw(sniper_buying);
     }
-    if (!pistol_buy)
-    window.draw(pistol_buying);
+
     //smg
     smg_buying.setTexture(smg_photo);
     
