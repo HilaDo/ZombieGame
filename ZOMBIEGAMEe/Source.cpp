@@ -408,6 +408,10 @@ Sprite Background3[4][7];
 Texture HwallT3, VwallT3;
 Sprite Hwall3[14], Vwall3[18];
 
+Texture Tlantren_Lwall3;
+Texture Tlantren_Rwall3;
+Texture Tlantren_Mwall3;
+Sprite lantren3[17];
 //level 2 variables
 
 Texture Tbackground2;
@@ -419,6 +423,10 @@ Sprite Hwall[15], Vwall[15];
 Texture TME2;
 Sprite ME2[8];
 
+Texture Tlantren_Lwall2;
+Texture Tlantren_Rwall2;
+Texture Tlantren_Mwall2;
+Sprite lantren2[17];
 
 //level 1 variables
 
@@ -427,6 +435,9 @@ Sprite background1[7][10];
 
 Texture VwallT1, HwallT1;
 Sprite Vwall1[15], Hwall1[15];
+
+Texture lantren;
+Sprite lantren1[17];
 
 Texture ME;
 Sprite ME1[7];
@@ -563,6 +574,8 @@ Texture ammo_smg_photo;
 
 Texture speedmachine_photo;
 Texture reloadmachine_photo;
+
+
 
 Texture Void;
 
@@ -734,6 +747,10 @@ void init_walls()
 }
 void GetTextures()
 {
+    lantren.loadFromFile("lantren 1.png");
+    Tlantren_Lwall2.loadFromFile("lantren_2_Lwall.png");
+    Tlantren_Rwall2.loadFromFile("lantren_2_Rwall.png");
+    Tlantren_Mwall2.loadFromFile("lantren_2_Mwall.png");
     for (int i = 0; i < 8; i++)
     {
         WalkAnimation[i].loadFromFile("anim by rows/walk/tile" + std::to_string(i) + ".png");
@@ -865,6 +882,10 @@ void GetTextures()
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
+    }
+    for (int i = 0; i < 15; i++)
+    {
+        lantren1[i].setTexture(lantren);
     }
 }
 //update function
@@ -1286,8 +1307,9 @@ void select_guns()
             Curr_Gun_state = Gun_State::Sniper;
             gun_switch_delay_counter = current_fire_rate;
             trigger = true;
-        }
+        }       
     }
+    
     
 }
 void Switch_Current_Gun_Attributes()
@@ -2186,12 +2208,9 @@ void Draw()
     {
     case 1:
         Portal_S.setPosition(580, 790);
-        speedmachine.setPosition(Vector2f(35, 25));
-        reloadmachine.setPosition(Vector2f(1080, 580));
-        pistol_buying.setPosition(Vector2f(150, 95)); 
+        speedmachine.setPosition(Vector2f(200, 25));
+        reloadmachine.setPosition(Vector2f(1080, 580)); 
         smg_buying.setPosition(Vector2f(860, 415)); 
-        shotgun_buying.setPosition(Vector2f(1850, 790));
-        sniper_buying.setPosition(Vector2f(500, 500));
         for (int i = 0; i < 10; i++)
         {
             for (int j = 0; j < 7; j++)
@@ -2199,32 +2218,33 @@ void Draw()
                 window.draw(background1[j][i]);
             }
         }
+        shotgun_buying.setPosition(Vector2f(1700, 790));
+        sniper_buying.setPosition(Vector2f(500, 700));
         //upper wall
 
         for (int i = 0; i < 5; i++)
         {
             Hwall1[i].setPosition(405 * i, 0);
-            light.setPosition(405 * i, 0);
+            light.setPosition((405 * i) + 100, 20);
             window.draw(light);
             ambientlight.draw(light);
+            lantren1[i].setPosition((405 * i) + 100, 20);
         }
         //lower wall
 
         for (int i = 5; i < 10; i++)
         {
             Hwall1[i].setPosition(405 * (i - 5), 1020);
-            light.setPosition(405 * (i - 5), 1020);
-            window.draw(light);
-            ambientlight.draw(light);
         }
         //left wall
 
         for (int i = 0; i < 4; i++)
         {
             Vwall1[i].setPosition(0, (405 * i) + 40);
-            light.setPosition(0, (405 * i) + 40);
+            light.setPosition(20, (405 * i) + 85);
             window.draw(light);
             ambientlight.draw(light);
+            lantren1[i + 9].setPosition(20, (405 * i) + 85);
         }
         //Right wall
 
@@ -2234,15 +2254,17 @@ void Draw()
             light.setPosition(1890, (405 * (i - 4)) + 40);
             window.draw(light);
             ambientlight.draw(light);
+            lantren1[i + 8].setPosition(1880, (405 * (i - 4)) + 85);
         }
 
         //mid walls
         for (int i = 10; i < 14; i++)
         {
             Hwall1[i].setPosition((405 * (i - 10)) + 30, 550);
-            light.setPosition(405 * (i - 10) + 30, 550);
+            light.setPosition((405 * (i - 10)) + 130, 570);
             window.draw(light);
             ambientlight.draw(light);
+            lantren1[i - 5].setPosition((405 * (i - 10)) + 130, 570);
         }
         Vwall1[8].setPosition(1050, 575);
         Vwall1[9].setPosition(800, 245);
@@ -2282,6 +2304,10 @@ void Draw()
         {
             window.draw(ME1[i]);
         }
+        for (int i = 9; i < 17; i++)
+        {
+            window.draw(lantren1[i]);
+        }
         for (int i = 0; i < 10; i++)
         {
             window.draw(Vwall1[i]);
@@ -2304,9 +2330,18 @@ void Draw()
         {
             window.draw(ME1[i]);
         }
+        for (int i = 0; i < 9; i++)
+        {
+            window.draw(lantren1[i]);
+        }
         break;
     case 2:
         Portal_S.setPosition(50, 50);
+        speedmachine.setPosition(Vector2f(400, 25));
+        reloadmachine.setPosition(Vector2f(850, 25));
+        smg_buying.setPosition(Vector2f(200, 415));
+        shotgun_buying.setPosition(Vector2f(1000, 790));
+        sniper_buying.setPosition(Vector2f(1700, 700));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -2372,12 +2407,42 @@ void Draw()
             Door[i].setPosition(1273, 80 + (35 * i));
         }
 
+        //lantren 
+        for (int i = 0; i < 17; i++)
+        {
+            lantren2[i].setColor(Color(237, 174, 161));
+        }
+        for (int i = 0; i < 4; i++)
+        {
+            lantren2[i].setTexture(Tlantren_Rwall2);
+            lantren2[i].setPosition(1845, 20 + (300 * i));
+            lantren2[i + 4].setTexture(Tlantren_Lwall2);
+            lantren2[i + 4].setPosition(0, 20 + (300 * i));
+        }
+        for (int i = 8; i < 13; i++)
+        {
+            lantren2[i].setTexture(Tlantren_Mwall2);
+            lantren2[i].setPosition(200 + (500 * (i - 8)), 10);
+        }
+        for (int i = 13; i < 17; i++)
+        {
+            lantren2[i].setTexture(Tlantren_Mwall2);
+            lantren2[i].setPosition(200 + (500 * (i - 13)), 980);
+        }
+        for (int i = 8; i < 17; i++)
+        {
+            lantren2[i].setTexture(Tlantren_Mwall2);
+        }
         for (int i = 0; i < 7; i++)
         {
             for (int j = 0; j < 4; j++)
             {
                 window.draw(Background2[j][i]);
             }
+        }
+        for (int i = 13; i < 17; i++)
+        {
+            window.draw(lantren2[i]);
         }
         for (int i = 0; i < 15; i++)
         {
@@ -2399,9 +2464,18 @@ void Draw()
         {
             window.draw(ME2[i]);
         }
+        for (int i = 0; i < 13; i++)
+        {
+            window.draw(lantren2[i]);
+        }
         break;
     case 3:
         Portal_S.setPosition(50, 50);
+        speedmachine.setPosition(Vector2f(35, 25));
+        reloadmachine.setPosition(Vector2f(1500, 25));
+        smg_buying.setPosition(Vector2f(200, 415));
+        shotgun_buying.setPosition(Vector2f(500, 790));
+        sniper_buying.setPosition(Vector2f(1700, 700));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -2464,14 +2538,41 @@ void Draw()
         {
             Door[i].setPosition(1060, 360 + (35 * i));
         };
-
-
+        Tlantren_Lwall3.loadFromFile("lantren_1_Lwall.png");
+        Tlantren_Rwall3.loadFromFile("lantren_1_Rwall.png");
+        Tlantren_Mwall3.loadFromFile("lantren_1_Mwall.png");
+        //lantren 
+        for (int i = 0; i < 4; i++)
+        {
+            lantren3[i].setTexture(Tlantren_Rwall3);
+            lantren3[i].setPosition(1845, 20 + (300 * i));
+            lantren3[i + 4].setTexture(Tlantren_Lwall3);
+            lantren3[i + 4].setPosition(30, 20 + (300 * i));
+        }
+        for (int i = 8; i < 13; i++)
+        {
+            lantren3[i].setTexture(Tlantren_Mwall3);
+            lantren3[i].setPosition(200 + (500 * (i - 8)), 10);
+        }
+        for (int i = 13; i < 17; i++)
+        {
+            lantren3[i].setTexture(Tlantren_Mwall3);
+            lantren3[i].setPosition(200 + (500 * (i - 13)), 980);
+        }
+        for (int i = 8; i < 17; i++)
+        {
+            lantren3[i].setTexture(Tlantren_Mwall3);
+        }
         for (int i = 0; i < 7; i++)
         {
             for (int j = 0; j < 4; j++)
             {
                 window.draw(Background3[j][i]);
             }
+        }
+        for (int i = 13; i < 17; i++)
+        {
+            window.draw(lantren3[i]);
         }
         for (int i = 0; i < 18; i++)
         {
@@ -2485,6 +2586,11 @@ void Draw()
         {
             window.draw(Hwall3[i]);
         }
+        for (int i = 0; i < 13; i++)
+        {
+            window.draw(lantren3[i]);
+        }
+
         break;
     }
     void1[0].setPosition(0, 1080);
@@ -2742,13 +2848,12 @@ void Draw()
     /* {end drawing ui }
      to draw guns 
      pistol*/
-    pistol_buying.setTexture(pistol_photo);
+    
     if (!sniper_buy)
     {
         window.draw(sniper_buying);
     }
-    if (!pistol_buy)
-    window.draw(pistol_buying);
+
     //smg
     smg_buying.setTexture(smg_photo);
     
