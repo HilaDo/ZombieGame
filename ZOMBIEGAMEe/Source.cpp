@@ -14,7 +14,8 @@ using namespace std;
 //to be displayed on ui
 int Player_Health = 100;
 int Score= 0;
-int Money= 0;
+int highest_score = 0;
+int Money= 200000;
 int const speedmoney = 2000;
 int const reloadmoney = 2000;
 float speedmulti = 1;
@@ -23,21 +24,23 @@ float reloadmulti = 0.5;
 int current_level = 1;
 
 //buying weapon
-bool pistol_buy = true, smg_buy = false, shotgun_buy = false,sniper_buy = false, minigun_buy =true,speed_pow=false,reload_pow=false;
-int const money_pistol = 500, money_smg = 1000, money_shotgun = 1500;
-
+bool  smg_buy = false, shotgun_buy = false, sniper_buy = false, speed_pow = false, reload_pow = false;
+int const  money_smg = 1000, money_shotgun = 1500, money_sniper = 2000;
+//to cheak player intersects
+bool smg_player_intersects = false, sniper_player_intersects = false;
+bool shotgun_player_intersects = false;
 
 #define pi 3.14159265
 #define Level1NumWaves 3
 
 #define pistolfirerate 0.2f
-#define pistoldamage 6
+#define pistoldamage 3
 #define pistolspread 0
 #define pistolbulletpershot 1
 #define pistolclipsize 9
 #define pistolreloadtime 1
 #define Pistol_bullets_loaded_per_reload pistolclipsize
-int pistolammostock = 240;
+int pistolammostock = 36;
 int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.08f
@@ -47,7 +50,7 @@ int pistolbulletsloaded = pistolclipsize;
 #define rifleclipsize 30
 #define riflereloadtime 1
 #define Rifle_bullets_loaded_per_reload rifleclipsize
-int rifleammostock = 250;
+int rifleammostock = 90;
 int riflebulletsloaded = rifleclipsize;
 
 #define shotgunfirerate 1
@@ -57,7 +60,7 @@ int riflebulletsloaded = rifleclipsize;
 #define shotgunclipsize 8
 #define shotgunreloadtime 1
 #define ShotGun_bullets_loaded_per_reload 1
-int shotgunammostock = 250;
+int shotgunammostock = 24;
 int shotgunbulletsloaded = shotgunclipsize;
 
 #define sniperfirerate 1.6f
@@ -67,7 +70,7 @@ int shotgunbulletsloaded = shotgunclipsize;
 #define sniperclipsize 5
 #define sniperreloadtime 2
 #define sniper_bullets_loaded_per_reload sniperclipsize
-int sniperammostock = 250;
+int sniperammostock = 15;
 int sniperbulletsloaded = sniperclipsize;
 
 #define minigunfirerate 0.05
@@ -390,6 +393,20 @@ void block3();
 
 void Draw(); // the main drawing function where everything gets drawn on screen
 
+void UI();
+
+//menu
+void game_openning_menu(Font font);
+void Start(Font font);
+void Credits(Font font);
+void Exit(Font font);
+void Pause(Font font);
+void open_menu(Font font);
+void switch_menu();
+void Menu_Background(Font font);
+void Game_over(Font font);
+void Controls(Font font);
+
 
 //levels
 
@@ -411,7 +428,7 @@ Sprite Hwall3[14], Vwall3[18];
 Texture Tlantren_Lwall3;
 Texture Tlantren_Rwall3;
 Texture Tlantren_Mwall3;
-Sprite lantren3[17];
+Sprite lantren3[22];
 //level 2 variables
 
 Texture Tbackground2;
@@ -426,7 +443,7 @@ Sprite ME2[8];
 Texture Tlantren_Lwall2;
 Texture Tlantren_Rwall2;
 Texture Tlantren_Mwall2;
-Sprite lantren2[17];
+Sprite lantren2[22];
 
 //level 1 variables
 
@@ -462,6 +479,11 @@ Text health_precent_text;
 Text current_wave;
 Text current_ammo_text;
 Text ammo_stock_text;
+Text money_smg_text;
+Text money_sniper_text;
+Text money_shotgun_text;
+Text speedmachine_text;
+Text reloadmachine_text;
 //all sprites in the game
 Sprite Player;
 RectangleShape Gun(Vector2f(1.f,1.f));
@@ -486,6 +508,10 @@ Sprite reloadmachine;
 Sprite Crosshair;
 Sprite Portal_S;
 Sprite void1[4];
+Sprite slow_ability;
+Sprite MiniGun_ability;
+Sprite SpeedCola_S;
+Sprite StaminaUp_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
 
@@ -575,7 +601,11 @@ Texture ammo_smg_photo;
 Texture speedmachine_photo;
 Texture reloadmachine_photo;
 
+Texture slow_ability_photo;
+Texture minigun_ability_photo;
 
+Texture SpeedCola_T;
+Texture StaminaUp_T;
 
 Texture Void;
 
@@ -674,6 +704,20 @@ vector<Sprite> HealthPacks;
 vector<Sprite> AmmoPacks;
 vector<MuzzleFlashEffect> muzzleEffects;
 
+//  menu
+int menu_num = 1;
+Texture Menu_background;
+Sprite menu_background;
+
+Texture Pause_menu;
+Sprite pause_menu;
+
+Texture End_game;
+Sprite end_game;
+
+Texture Control;
+Sprite control;
+
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
 LightingArea ambientlight(candle::LightingArea::FOG,Vector2f(0,0),Vector2f(1920, 1080));
@@ -696,12 +740,6 @@ int main()
     window.setMouseCursorVisible(false);
     view.zoom(0.65);
 
-    ifstream inf("savegame.txt");
-    inf >>current_level;
-    inf >> Player_Health;
-    inf >> Score;
-    inf.close();
-
     SwtichCurrentWallBounds();
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
@@ -710,20 +748,33 @@ int main()
         //cout << elapsed << endl;
         while (window.pollEvent(event)) {
 
-            if (event.type == Event::Closed || Keyboard::isKeyPressed(Keyboard::Escape)) {
-                ofstream outf("savegame.txt");
-                outf << current_level << endl;
-                outf << Player_Health << endl;
-                outf << Score << endl;
-                outf.close();
+            if (event.type == Event::Closed) {
                 window.close();
+            }
+            if (Keyboard::isKeyPressed(Keyboard::Escape) || curr_state == death)
+            {
+                switch_menu();
             }
         }
         window.setView(view);
-        Update(elapsed);
         center = Vector2i(window.getSize().x / 2, window.getSize().y / 2);
         globalcenter = window.mapPixelToCoords(center);
-        Draw();
+        if (menu_num != 0)
+        {
+            window.clear();
+            Menu_Background(blood_font);
+            open_menu(blood_font);
+            window.display();
+            window.setMouseCursorVisible(true);
+        }
+        else
+        {
+
+            Update(elapsed);
+            Draw();
+            window.setMouseCursorVisible(false);
+
+        }
     }
 
     return 0;
@@ -857,6 +908,14 @@ void GetTextures()
     sniper_buying.setTexture(sniper_photo);
     Void.loadFromFile("void.jpg");
 
+    slow_ability_photo.loadFromFile("timer.png");
+    slow_ability.setTexture(slow_ability_photo);
+    slow_ability.setScale(0.25, 0.25);
+
+    minigun_ability_photo.loadFromFile("minigun icon.png");
+    MiniGun_ability.setTexture(minigun_ability_photo);
+    MiniGun_ability.setScale(0.05, 0.05);
+
     Pistol_shoot_Sound.loadFromFile("sounds to use/Pistol/PistolShootSound.WAV");
     Pistol_reload_Sound.loadFromFile("sounds to use/Pistol/PistolReloadSound.wav");
 
@@ -875,10 +934,22 @@ void GetTextures()
     minigun_shoot_Sound.loadFromFile("sounds to use/MiniGun/MiniGunShootSound.wav");
     minigun_pickup_sound.loadFromFile("sounds to use/MiniGun/MiniGunPickupSound.WAV");
 
+    SpeedCola_T.loadFromFile("SpeedCola.png");
+    StaminaUp_T.loadFromFile("StaminUp.png");
+
+    SpeedCola_S.setTexture(SpeedCola_T);
+    SpeedCola_S.setScale(0.05, 0.05);
+    StaminaUp_S.setTexture(StaminaUp_T);
+    StaminaUp_S.setScale(0.05,0.05);
+    //menu
+    Menu_background.loadFromFile("menu_background1.png");
+    Pause_menu.loadFromFile("pause.png");
+    End_game.loadFromFile("gameOver.png");
+    Control.loadFromFile("game_controls.png");
+
     music[0].loadFromFile("Sad But True (Remastered).wav");
     music[1].loadFromFile("Seek & Destroy (Remastered).wav");
     music[2].loadFromFile("Metallica Shadows Follow.wav");
-    cout << rifle_shoot_Sound.getDuration().asSeconds();
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
@@ -1039,7 +1110,7 @@ void Player_Collision()
         {
             if (Player.getGlobalBounds().intersects(HealthPacks[i].getGlobalBounds()))
             {
-                Player_Health += 20;
+                Player_Health += 5;
                 HealthPacks.erase(HealthPacks.begin() + i);
             }
         }
@@ -1052,13 +1123,30 @@ void Player_Collision()
     {
         if (Player.getGlobalBounds().intersects(AmmoPacks[i].getGlobalBounds()))
         {
-            pistolammostock += 36;
-            rifleammostock += 120 ;
-            shotgunammostock += 16;
-            sniperammostock += 15;
+            rifleammostock += 15 ;
+            shotgunammostock += 4;
+            sniperammostock += 5;
             AmmoPacks.erase(AmmoPacks.begin() + i);
         }
     }
+    if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()))
+    {
+        smg_player_intersects = true;
+    }
+    else
+        smg_player_intersects = false;
+    if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()))
+    {
+        sniper_player_intersects = true;
+    }
+    else
+        sniper_player_intersects = false;
+    if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()))
+    {
+        shotgun_player_intersects = true;
+    }
+    else
+        shotgun_player_intersects = false;
     //vandingmachine
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()) && Money >= speedmoney && speed_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
         playerspeed *= 2;
@@ -1076,7 +1164,6 @@ void Player_Collision()
     {
         PortalOpen = false;
         current_level++;
-        pistol_buy = false;
         smg_buy = false;
         shotgun_buy = false;
         speed_pow = false;
@@ -1091,6 +1178,14 @@ void Player_Collision()
         playerspeed = 175;
         SwtichCurrentWallBounds();
         Current_Wave1 = 0;
+        pistolammostock = 36;
+        rifleammostock = 90;
+        shotgunammostock = 24;
+        sniperammostock = 15;
+        pistolbulletsloaded = 9;
+        riflebulletsloaded = 30;
+        shotgunbulletsloaded = 8;
+        sniperbulletsloaded = 5;
     }
 }
 void Switch_States()
@@ -1105,6 +1200,11 @@ void Switch_States()
     }
     if (Player_Health <= 0)
     {
+        menu_num = 6;
+        if (highest_score < Score)
+        {
+            highest_score = Score;
+        }
         curr_state = state::death;
     }
     if (ishit)
@@ -1232,7 +1332,7 @@ void TimeSlow()
     if (!isSlowing && !Slowready)
     {
         slow_counter += playerdeltatime;
-        if (slow_counter > 2.0)
+        if (slow_counter > 10.0)
         {
             Slowready = true;
             slow_counter = 0;
@@ -1255,14 +1355,14 @@ void MiniGunAbility()
         {
             isMinigunActive = false;
             Curr_Gun_state = Pistol;
-            slow_counter = 0;
+            minigun_counter = 0;
             *current_ammo += 200;
         }
     }
     if (!isMinigunActive && !isMinigunReady)
     {
         minigun_counter += playerdeltatime;
-        if (minigun_counter > 2.0)
+        if (minigun_counter > 6.0)
         {
             isMinigunReady = true;
             minigun_counter = 0;
@@ -1284,7 +1384,7 @@ void select_guns()
 {
     if (!isMinigunActive)
     {
-        if (Keyboard::isKeyPressed(Keyboard::Num1) && pistol_buy)
+        if (Keyboard::isKeyPressed(Keyboard::Num1))
         {
             Curr_Gun_state = Gun_State::Pistol;
             gun_switch_delay_counter = current_fire_rate;
@@ -1414,7 +1514,14 @@ void Shooting()
             bullets.push_back(newbullet);
             numberoftotalbulletsshot++;
         }
-        *current_ammo -= 1;
+        if (Curr_Gun_state == MiniGun)
+        {
+            *current_ammo -= minigunbulletpershot;
+        }
+        else
+        {
+            *current_ammo -= 1;
+        }
     }
     if ((*current_ammo <= 0 || (Keyboard::isKeyPressed(Keyboard::R)) && (*current_ammo_stock >= 0 && *current_ammo != current_clip_size)) || isreloading)
     {
@@ -1437,18 +1544,15 @@ void Shooting()
             reload_trigger = true;
         }
         if (reload_time_counter > current_reload_time)
-        {
-            /*if (MainSound.getStatus() != Sound::Playing)
-            {
-                MainSound.setPitch(1 * (1 / reloadmulti));
-                MainSound.setBuffer(*Current_reload_Buffer);
-                MainSound.play();
-            }*/
+        {         
             reload_trigger = false;
             if (*current_ammo_stock >= current_clip_size || (Curr_Gun_state == Gun_State::Shotgun && *current_ammo_stock > 0))
             {
                 *current_ammo += current_bullets_loaded_per_reload;
-                *current_ammo_stock -= current_bullets_loaded_per_reload;
+                if (Curr_Gun_state != Pistol)
+                {
+                    *current_ammo_stock -= current_bullets_loaded_per_reload;
+                }
             }
             else
             {
@@ -1508,7 +1612,7 @@ void Bullet_Movement_Collision(float dt)
                 {
                     int random_num = rand() % 100;
                     zombies[j].isdeath = true;
-                    if (random_num > 50 && random_num < 74)
+                    if (random_num > 80 && random_num < 91)
                     {
 
                         Sprite newhealthpack;
@@ -1518,7 +1622,7 @@ void Bullet_Movement_Collision(float dt)
                         break;
 
                     }
-                    else if (random_num > 75 && random_num < 100)
+                    else if (random_num > 90 && random_num < 100)
                     {
                         Sprite newammostock;
                         newammostock.setTexture(ammo_smg_photo);
@@ -1527,7 +1631,7 @@ void Bullet_Movement_Collision(float dt)
                         break;
                     }
                     Score += 10;
-                    Money += 175;
+                    Money += 75;
                 }
                 else if (zombies[j].health > 0 && !zombies[j].isdeath)
                 {
@@ -2182,12 +2286,13 @@ void block3()
 void Draw()
 {
     RadialLight light;
-    light.setRange(300);
+    light.setRange(400);
     light.setIntensity(150);
     light.setColor(Color(229, 238, 141));
-    ambientlight.clear();
-    window.clear();
-
+    if (menu_num != 5 && menu_num != 6) {
+        ambientlight.clear();
+        window.clear();
+    }
 
     if (Norm_dir_vector.x > 0)
     {
@@ -2235,15 +2340,15 @@ void Draw()
         for (int i = 5; i < 10; i++)
         {
             Hwall1[i].setPosition(405 * (i - 5), 1020);
+            light.setPosition(405 * (i - 5), 1020);
+            window.draw(light);
+            ambientlight.draw(light);
         }
         //left wall
 
         for (int i = 0; i < 4; i++)
         {
             Vwall1[i].setPosition(0, (405 * i) + 40);
-            light.setPosition(20, (405 * i) + 85);
-            window.draw(light);
-            ambientlight.draw(light);
             lantren1[i + 9].setPosition(20, (405 * i) + 85);
         }
         //Right wall
@@ -2251,9 +2356,6 @@ void Draw()
         for (int i = 4; i < 8; i++)
         {
             Vwall1[i].setPosition(1890, (405 * (i - 4)) + 40);
-            light.setPosition(1890, (405 * (i - 4)) + 40);
-            window.draw(light);
-            ambientlight.draw(light);
             lantren1[i + 8].setPosition(1880, (405 * (i - 4)) + 85);
         }
 
@@ -2261,9 +2363,6 @@ void Draw()
         for (int i = 10; i < 14; i++)
         {
             Hwall1[i].setPosition((405 * (i - 10)) + 30, 550);
-            light.setPosition((405 * (i - 10)) + 130, 570);
-            window.draw(light);
-            ambientlight.draw(light);
             lantren1[i - 5].setPosition((405 * (i - 10)) + 130, 570);
         }
         Vwall1[8].setPosition(1050, 575);
@@ -2275,20 +2374,7 @@ void Draw()
         ME1[3].setPosition(792, 515);
         ME1[4].setPosition(1042, 518);//
         ME1[5].setPosition(0, -20);//
-        ME1[6].setPosition(1878, -20);//
-
-        for (int i = 0; i < 6; i++)
-        {
-            Door[i].setPosition(760, -30 + (35 * i));
-        }
-        for (int i = 6; i < 11; i++)
-        {
-            Door[i].setPosition(1630 + (46 * (i - 6)), 500);
-        }
-        for (int i = 11; i < 17; i++)
-        {
-            Door[i].setPosition(1020, 775 + (35 * (i - 11)));
-        }
+        ME1[6].setPosition(1878, -20);//     
 
         //upper wall
         for (int i = 0; i < 5; i++)
@@ -2307,24 +2393,19 @@ void Draw()
         for (int i = 9; i < 17; i++)
         {
             window.draw(lantren1[i]);
+            light.setPosition(lantren1[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
         }
         for (int i = 0; i < 10; i++)
         {
             window.draw(Vwall1[i]);
-        }
-        for (int i = 11; i < 17; i++)
-        {
-            window.draw(Door[i]);
-        }
+        }     
         //lower wall
         for (int i = 5; i < 10; i++)
         {
             window.draw(Hwall1[i]);
-        }
-        for (int i = 0; i < 11; i++)
-        {
-            window.draw(Door[i]);
-        }
+        }      
         window.draw(Vwall1[9]);
         for (int i = 0; i < 4; i++)
         {
@@ -2333,10 +2414,14 @@ void Draw()
         for (int i = 0; i < 9; i++)
         {
             window.draw(lantren1[i]);
+            light.setPosition(lantren1[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
         }
         break;
     case 2:
-        Portal_S.setPosition(50, 50);
+        light.setColor(Color(255, 221, 82));
+        Portal_S.setPosition(960, 540);
         speedmachine.setPosition(Vector2f(400, 25));
         reloadmachine.setPosition(Vector2f(850, 25));
         smg_buying.setPosition(Vector2f(200, 415));
@@ -2352,27 +2437,18 @@ void Draw()
         for (int i = 5; i < 10; i++)
         {
             Hwall[i].setPosition((i - 5) * 410, 1023);
-            light.setPosition(405 * (i - 5), 1020);
-            window.draw(light);
-            ambientlight.draw(light);
         };
 
         //left wall
         for (int i = 0; i < 3; i++)
         {
             Vwall[i].setPosition(0, i * 347);
-            light.setPosition(0, i * 347);
-            window.draw(light);
-            ambientlight.draw(light);
         };
 
         //right wall
         for (int i = 3; i < 6; i++)
         {
             Vwall[i].setPosition(1892, (i - 3) * 347);
-            light.setPosition(1892, (i - 3) * 347);
-            window.draw(light);
-            ambientlight.draw(light);
         };
 
         //mid walls
@@ -2393,22 +2469,14 @@ void Draw()
         ME2[4].setPosition(605, 980);
         ME2[5].setPosition(1290, 980);
         ME2[6].setPosition(605, -30);
-        ME2[7].setPosition(1290, -30);
+        ME2[7].setPosition(1290, -30); 
 
-        //left door
-        for (int i = 0; i < 8; i++)
-        {
-            Door[i].setPosition(590, 330 + (35 * i));
-        }
-
-        //right door
-        for (int i = 8; i < 15; i++)
-        {
-            Door[i].setPosition(1273, 80 + (35 * i));
-        }
-
+        lantren2[18].setPosition(590, 360);
+        lantren2[19].setPosition(1275, 360);
+        lantren2[20].setPosition(590, 630);
+        lantren2[21].setPosition(1275, 630);
         //lantren 
-        for (int i = 0; i < 17; i++)
+        for (int i = 0; i < 22; i++)
         {
             lantren2[i].setColor(Color(237, 174, 161));
         }
@@ -2416,13 +2484,19 @@ void Draw()
         {
             lantren2[i].setTexture(Tlantren_Rwall2);
             lantren2[i].setPosition(1845, 20 + (300 * i));
+
             lantren2[i + 4].setTexture(Tlantren_Lwall2);
             lantren2[i + 4].setPosition(0, 20 + (300 * i));
+
         }
         for (int i = 8; i < 13; i++)
         {
             lantren2[i].setTexture(Tlantren_Mwall2);
             lantren2[i].setPosition(200 + (500 * (i - 8)), 10);
+        }
+        for (int i = 18; i < 22; i++)
+        {
+            lantren2[i].setTexture(Tlantren_Mwall2);
         }
         for (int i = 13; i < 17; i++)
         {
@@ -2443,7 +2517,18 @@ void Draw()
         for (int i = 13; i < 17; i++)
         {
             window.draw(lantren2[i]);
+            light.setPosition(lantren2[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
         }
+        window.draw(lantren2[20]);
+        light.setPosition(lantren2[20].getPosition().x + 35, lantren2[20].getPosition().y);
+        window.draw(light);
+        ambientlight.draw(light);
+        window.draw(lantren2[21]);
+        light.setPosition(lantren2[21].getPosition().x + 35, lantren2[21].getPosition().y);
+        window.draw(light);
+        ambientlight.draw(light);
         for (int i = 0; i < 15; i++)
         {
             window.draw(Hwall[i]);
@@ -2454,23 +2539,31 @@ void Draw()
         {
             window.draw(Vwall[i]);
         }
-        for (int i = 0; i < 15; i++)
-        {
-            window.draw(Door[i]);
-        }
         window.draw(Vwall[10]);
         window.draw(Vwall[11]);
         for (int i = 0; i < 6; i++)
         {
             window.draw(ME2[i]);
         }
+        window.draw(lantren2[19]);
+        light.setPosition(lantren2[19].getPosition().x + 35, lantren2[19].getPosition().y);
+        window.draw(light);
+        ambientlight.draw(light);
+        window.draw(lantren2[18]);
+        light.setPosition(lantren2[18].getPosition().x + 35, lantren2[18].getPosition().y);
+        window.draw(light);
+        ambientlight.draw(light);
         for (int i = 0; i < 13; i++)
         {
             window.draw(lantren2[i]);
+            light.setPosition(lantren2[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
         }
         break;
     case 3:
-        Portal_S.setPosition(50, 50);
+        light.setColor(Color(229, 238, 141));
+        Portal_S.setPosition(960, 540);
         speedmachine.setPosition(Vector2f(35, 25));
         reloadmachine.setPosition(Vector2f(1500, 25));
         smg_buying.setPosition(Vector2f(200, 415));
@@ -2480,36 +2573,24 @@ void Draw()
         for (int i = 0; i < 5; i++)
         {
             Hwall3[i].setPosition(i * 410, -30);
-            light.setPosition(i * 410, -30);
-            window.draw(light);
-            ambientlight.draw(light);
         };
 
         //lowwer wall
         for (int i = 5; i < 10; i++)
         {
             Hwall3[i].setPosition((i - 5) * 410, 990);
-            light.setPosition((i - 5) * 410, 990);
-            /*window.draw(light);
-            ambientlight.draw(light);*/
         };
 
         //Right wall
         for (int i = 0; i < 7; i++)
         {
             Vwall3[i].setPosition(0, i * 150);
-            light.setPosition(0, i * 150);
-            window.draw(light);
-            ambientlight.draw(light);
         };
 
         //left wall
         for (int i = 7; i < 14; i++)
         {
             Vwall3[i].setPosition(1887, (i - 7) * 150);
-            light.setPosition(1887, (i - 7) * 150);
-            window.draw(light);
-            ambientlight.draw(light);
         }
 
         //mid walls
@@ -2522,30 +2603,21 @@ void Draw()
         Vwall3[16].setPosition(783, 0);
         Vwall3[17].setPosition(783, 150);
 
-
-        //upper door
-        for (int i = 1; i < 6; i++)
-        {
-            Door[i].setPosition(750, 265 + (35 * i));
-        };
-        //mid door
-        for (int i = 6; i < 12; i++)
-        {
-            Door[i].setPosition(515 + (46 * i), 485);
-        };
-        //lowwer door
-        for (int i = 12; i < 17; i++)
-        {
-            Door[i].setPosition(1060, 360 + (35 * i));
-        };
         Tlantren_Lwall3.loadFromFile("lantren_1_Lwall.png");
         Tlantren_Rwall3.loadFromFile("lantren_1_Rwall.png");
         Tlantren_Mwall3.loadFromFile("lantren_1_Mwall.png");
         //lantren 
+        for (int i = 17; i < 22; i++)
+        {
+            lantren3[i].setTexture(Tlantren_Mwall3);
+            lantren3[i].setPosition(200 + (500 * (i - 17)), 530);
+
+        }
         for (int i = 0; i < 4; i++)
         {
             lantren3[i].setTexture(Tlantren_Rwall3);
             lantren3[i].setPosition(1845, 20 + (300 * i));
+
             lantren3[i + 4].setTexture(Tlantren_Lwall3);
             lantren3[i + 4].setPosition(30, 20 + (300 * i));
         }
@@ -2573,14 +2645,13 @@ void Draw()
         for (int i = 13; i < 17; i++)
         {
             window.draw(lantren3[i]);
+            light.setPosition(lantren3[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
         }
         for (int i = 0; i < 18; i++)
         {
             window.draw(Vwall3[i]);
-        }
-        for (int i = 0; i < 17; i++)
-        {
-            window.draw(Door[i]);
         }
         for (int i = 0; i < 14; i++)
         {
@@ -2589,14 +2660,19 @@ void Draw()
         for (int i = 0; i < 13; i++)
         {
             window.draw(lantren3[i]);
+            light.setPosition(lantren3[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
         }
-
+        for (int i = 17; i < 22; i++)
+        {
+            window.draw(lantren3[i]);
+            light.setPosition(lantren3[i].getPosition());
+            window.draw(light);
+            ambientlight.draw(light);
+        }
         break;
     }
-    void1[0].setPosition(0, 1080);
-    void1[1].setPosition(0, -2000);
-    void1[2].setPosition(1920, 0);
-    void1[3].setPosition(-2864, 0);
     for (int i = 0; i < 4; i++)
     {
         window.draw(void1[i]);
@@ -2613,10 +2689,6 @@ void Draw()
         bloodeffects[i].BloodShape.setOrigin(bloodeffects[i].BloodShape.getLocalBounds().width / 2, bloodeffects[i].BloodShape.getLocalBounds().height / 2);
         window.draw(bloodeffects[i].BloodShape);
     }
-    light.setPosition(500, 500);
-    window.draw(light);
-    ambientlight.draw(light);
-    window.draw(Player);
     for (int i = 0; i < bullets.size(); i++)
     {
         window.draw(bullets[i].shape);
@@ -2661,7 +2733,7 @@ void Draw()
     {
         Player.setScale(6, 6);
     }
-    
+    window.draw(Player);
     switch (Curr_Gun_state)
     {
     case Pistol:
@@ -2704,16 +2776,28 @@ void Draw()
     {
         window.draw(AmmoPacks[i]);
     }
-    // tamer 
-    /*{  to draw score and coins title }*/
-    /*{end   to draw score and coins title }*/
-    /* to draw guns */
-    /*pistol*/
-    pistol_photo.loadFromFile("pistol.png");
-    // tamer
-    //{ health bar } 
     window.draw(ambientlight);
     Crosshair.setPosition(MousePos);
+    void1[0].setPosition(0, 1080);
+    void1[1].setPosition(0, -2000);
+    void1[2].setPosition(1920, 0);
+    void1[3].setPosition(-2864, -400);
+    speedmachine.setScale(0.5, 0.5);
+    reloadmachine.setScale(0.5, 0.5);
+    UI();
+    window.draw(Crosshair);
+    if (menu_num != 5 && menu_num != 6)
+    {
+        window.display();
+        ambientlight.display();
+    }
+}
+void UI()
+{
+    RadialLight light;
+    light.setRange(100);
+    light.setIntensity(200);
+    light.setColor(Color::Yellow);
     RectangleShape health_bar(Vector2f(140, 15));
     health_bar.setScale(Vector2f((Player_Health / 100.0) * 2, 2));
     health_bar.setPosition(window.mapPixelToCoords(Vector2i(60, 20)));
@@ -2723,7 +2807,7 @@ void Draw()
     missing_health_bar.setPosition(window.mapPixelToCoords(Vector2i(60, 20)));
     RectangleShape health_bar_background(Vector2f(145 * 2, 20 * 2));
     health_bar_background.setFillColor(Color::Black);
-    health_bar_background.setPosition(health_bar.getPosition().x - 5 , health_bar.getPosition().y - 5);
+    health_bar_background.setPosition(health_bar.getPosition().x - 5, health_bar.getPosition().y - 5);
     window.draw(missing_health_bar);
     if (Player_Health > 0)
     {
@@ -2739,25 +2823,25 @@ void Draw()
         health_bar.setFillColor(Color(136, 8, 8));
     }
     if (Player_Health > 0)
-    window.draw(health_bar);
+        window.draw(health_bar);
     //  to  draw heart next to health bar 
     full_heart.setTexture(full_heart_photo);
     full_heart.setScale(Vector2f(0.15, 0.15));
     full_heart.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
     if (Player_Health > 0)
-    //window.draw(full_heart);
-    // to print health percent text 
-    health_precent_text.setFont(normal_font); 
+        //window.draw(full_heart);
+        // to print health percent text 
+        health_precent_text.setFont(normal_font);
     health_precent_text.setScale(2, 2);
     health_precent_text.setString(to_string(Player_Health));
     health_precent_text.setCharacterSize(12);
-    health_precent_text.setFillColor(Color(128,128,128));
+    health_precent_text.setFillColor(Color(128, 128, 128));
     health_precent_text.setPosition(health_bar.getPosition().x + 120, health_bar.getPosition().y);
     if (Player_Health >= 0)
         window.draw(health_precent_text);
     // to print  { % }
-   
-    precent_sign.setFont(normal_font); 
+
+    precent_sign.setFont(normal_font);
     precent_sign.setScale(2, 2);
     precent_sign.setString(" % ");
     precent_sign.setCharacterSize(12);
@@ -2778,7 +2862,7 @@ void Draw()
     score_text.setString("Score : " + to_string(Score));
     score_text.setCharacterSize(36);
     score_text.setFillColor(Color(136, 8, 8));
-    score_text.setPosition(window.mapPixelToCoords(Vector2i(0,980 )));
+    score_text.setPosition(window.mapPixelToCoords(Vector2i(0, 980)));
     window.draw(score_text);
 
     // to print money number
@@ -2826,64 +2910,121 @@ void Draw()
     window.draw(ammo_stock_text);
     // to draw ammo next to text 
     if (Curr_Gun_state == Gun_State::Pistol)
-    {     
+    {
         ammo_pistol.setTexture(ammo_pistol_photo);
         ammo_pistol.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
         window.draw(ammo_pistol);
     }
     else if (Curr_Gun_state == Gun_State::Smg)
     {
-        
+
         ammo_smg.setTexture(ammo_smg_photo);
         ammo_smg.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
         window.draw(ammo_smg);
     }
     else if (Curr_Gun_state == Gun_State::Shotgun)
     {
-        
+
         ammo_shotgun.setTexture(ammo_shotgun_photo);
         ammo_shotgun.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
         window.draw(ammo_shotgun);
     }
+    //smg price text 
+    money_smg_text.setFont(normal_font);
+    money_smg_text.setString("$" + to_string(money_smg));
+    money_smg_text.setCharacterSize(9);
+    money_smg_text.setFillColor(Color::White);
+    money_smg_text.setPosition(smg_buying.getPosition().x + 20, smg_buying.getPosition().y);
+    if (smg_player_intersects && !smg_buy)
+        window.draw(money_smg_text);
+    //sniper price text 
+    money_sniper_text.setFont(normal_font);
+    money_sniper_text.setString("$" + to_string(money_sniper));
+    money_sniper_text.setCharacterSize(9);
+    money_sniper_text.setFillColor(Color::White);
+    money_sniper_text.setPosition(sniper_buying.getPosition().x + 20, sniper_buying.getPosition().y);
+    if (sniper_player_intersects && !sniper_buy)
+        window.draw(money_sniper_text);
+    //shotgun price text 
+    money_shotgun_text.setFont(normal_font);
+    money_shotgun_text.setString("$" + to_string(money_shotgun));
+    money_shotgun_text.setCharacterSize(9);
+    money_shotgun_text.setFillColor(Color::White);
+    money_shotgun_text.setPosition(shotgun_buying.getPosition().x + 20, shotgun_buying.getPosition().y);
+    if (shotgun_player_intersects && !shotgun_buy)
+        window.draw(money_shotgun_text);  
+    //speedmachine price text 
+    speedmachine_text.setFont(normal_font);
+    speedmachine_text.setString("$" + to_string(speedmoney));
+    speedmachine_text.setCharacterSize(9);
+    speedmachine_text.setFillColor(Color::White);
+    speedmachine_text.setPosition(speedmachine.getPosition().x + 20, speedmachine.getPosition().y - 12);
+    if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()))
+        window.draw(speedmachine_text);
+    //
+    reloadmachine_text.setFont(normal_font);
+    reloadmachine_text.setString("$" + to_string(reloadmoney));
+    reloadmachine_text.setCharacterSize(9);
+    reloadmachine_text.setFillColor(Color::White);
+    reloadmachine_text.setPosition(reloadmachine.getPosition().x + 20, reloadmachine.getPosition().y - 12);
+    if (Player.getGlobalBounds().intersects(reloadmachine.getGlobalBounds()))
+        window.draw(reloadmachine_text);
     /* {end drawing ui }
-     to draw guns 
-     pistol*/
-    
+     to draw guns
+     */
+
     if (!sniper_buy)
     {
         window.draw(sniper_buying);
+        light.setPosition(sniper_buying.getPosition().x + sniper_buying.getLocalBounds().width / 2, sniper_buying.getPosition().y + sniper_buying.getLocalBounds().height / 2);
+        window.draw(light);
+        ambientlight.draw(light);
     }
 
     //smg
     smg_buying.setTexture(smg_photo);
-    
+
     if (!smg_buy)
+    {
         window.draw(smg_buying);
+        light.setPosition(smg_buying.getPosition().x + smg_buying.getLocalBounds().width /2, smg_buying.getPosition().y + smg_buying.getLocalBounds().height / 2);
+        window.draw(light);
+        ambientlight.draw(light);
+    }
     // shotgun 
     shotgun_buying.setTexture(shotgun_photo);
-    
+
     if (!shotgun_buy)
+    {
         window.draw(shotgun_buying);
+        light.setPosition(shotgun_buying.getPosition().x + shotgun_buying.getLocalBounds().width / 2, shotgun_buying.getPosition().y + shotgun_buying.getLocalBounds().height / 2);
+        window.draw(light);
+        ambientlight.draw(light);
+    }
     //end draw guns 
-
-    //vandingmachine
-    speedmachine.setScale(0.5, 0.5);
-    reloadmachine.setScale(0.5, 0.5);
-    window.draw(Crosshair);
-
-
-    window.display();
-    ambientlight.display();
+    slow_ability.setPosition(window.mapPixelToCoords(Vector2i(1200, 50)));
+    MiniGun_ability.setPosition(window.mapPixelToCoords(Vector2i(1200, 50)));
+    if (Slowready && current_level == 2)
+    {
+        window.draw(slow_ability);
+    }
+    if (isMinigunReady && current_level == 3)
+    {
+        window.draw(MiniGun_ability);
+    }
+    SpeedCola_S.setPosition(window.mapPixelToCoords(Vector2i(50, 75)));
+    StaminaUp_S.setPosition(window.mapPixelToCoords(Vector2i(75+SpeedCola_S.getGlobalBounds().width, 75)));
+    if (speed_pow)
+    {
+        window.draw(StaminaUp_S);
+    }
+    if (reload_pow)
+    {
+        window.draw(SpeedCola_S);
+    }
 }
-
 void buying_weapons()
 {
-    if (Player.getGlobalBounds().intersects(pistol_buying.getGlobalBounds()) && Money >= money_pistol && !pistol_buy && Keyboard::isKeyPressed(Keyboard::E))
-    {
-        Money -= money_pistol;
-        pistol_buy = true;
-        Score += 100;
-    }
     if (Player.getGlobalBounds().intersects(smg_buying.getGlobalBounds()) && Money >= money_smg && !smg_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= money_smg;
@@ -2908,4 +3049,382 @@ void buying_weapons()
         MainSound.setBuffer(sniper_pickup_Sound);
         MainSound.play();
     }
+}
+void game_openning_menu(Font font)
+{
+    Text start; start.setFont(font); start.setString("start"); start.setPosition(globalcenter.x - 100, globalcenter.y - 250); FloatRect collesion1 = start.getGlobalBounds();
+    if (collesion1.contains(MousePos))
+    {
+        start.setFillColor(Color(100, 100, 100, 100));  start.setCharacterSize(50); window.draw(start);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 2;
+        }
+    }
+    else
+    {
+        start.setFillColor(Color(225, 225, 225, 225));  start.setCharacterSize(45); window.draw(start);
+    }
+
+    Text credits; credits.setFont(font); credits.setString("credits"); credits.setPosition(globalcenter.x - 100, globalcenter.y - 100); FloatRect collesion2 = credits.getGlobalBounds();
+    if (collesion2.contains(MousePos))
+    {
+        credits.setFillColor(Color(100, 100, 100, 100));  credits.setCharacterSize(50); window.draw(credits);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 3;
+        }
+    }
+    else
+    {
+        credits.setFillColor(Color(225, 225, 225, 225));  credits.setCharacterSize(45); window.draw(credits);
+    }
+
+    Text exit; exit.setFont(font); exit.setString("exit"); exit.setPosition(globalcenter.x - 100, globalcenter.y + 200); FloatRect collesion3 = exit.getGlobalBounds();
+    if (collesion3.contains(MousePos))
+    {
+        exit.setFillColor(Color(100, 100, 100, 100));  exit.setCharacterSize(50); window.draw(exit);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 4;
+        }
+    }
+    else
+    {
+        exit.setFillColor(Color(225, 225, 225, 225));  exit.setCharacterSize(45); window.draw(exit);
+    }
+
+
+    Text controls; controls.setFont(font); controls.setString("controls"); controls.setPosition(globalcenter.x - 100, globalcenter.y + 50); FloatRect collesion4 = controls.getGlobalBounds();
+    if (collesion4.contains(MousePos))
+    {
+        controls.setFillColor(Color(100, 100, 100, 100));  controls.setCharacterSize(50); window.draw(controls);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 7;
+        }
+    }
+    else
+    {
+        controls.setFillColor(Color(225, 225, 225, 225));  controls.setCharacterSize(45); window.draw(controls);
+    }
+
+}
+
+void Start(Font font)
+{
+    Text newgame; newgame.setFont(font); newgame.setString("new game"); newgame.setPosition(globalcenter.x - 250, globalcenter.y - 150); FloatRect collesion1 = newgame.getGlobalBounds();
+    if (collesion1.contains(MousePos))
+    {
+        newgame.setFillColor(Color(0, 100, 100, 60));  newgame.setCharacterSize(45); window.draw(newgame);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            current_level = 1;
+            Player.setPosition(500, 500);
+            Player_Health = 100;
+            Score = 0;
+            menu_num = 0;
+            zombies.clear();
+            TotalSpawnedZombies = 0;
+            PortalOpen = false;
+            smg_buy = false;
+            shotgun_buy = false;
+            speed_pow = false;
+            reload_pow = false;
+            sniper_buy = false;
+            speedmulti = 1;
+            reloadmulti = 1;
+            Money = 0;
+            Wall_Bounds.clear();
+            HealthPacks.clear();
+            bloodeffects.clear();
+            Curr_Gun_state = Pistol;
+            playerspeed = 175;
+            SwtichCurrentWallBounds();
+            Current_Wave1 = 0;
+            MusicPlayer.stop();
+            current_song = 0;
+            MusicPlayer.play();
+            pistolammostock = 36;
+            rifleammostock = 90;
+            shotgunammostock = 24;
+            sniperammostock = 15;
+            pistolbulletsloaded = 9;
+            riflebulletsloaded = 30;
+            shotgunbulletsloaded = 8;
+            sniperbulletsloaded = 5;
+        }
+    }
+    else
+    {
+        newgame.setFillColor(Color(225, 225, 225, 225));  newgame.setCharacterSize(40); window.draw(newgame);
+    }
+
+    Text resume; resume.setFont(font); resume.setString("resume");  resume.setPosition(globalcenter.x + 50, globalcenter.y - 150); FloatRect collesion2 = resume.getGlobalBounds();
+    if (collesion2.contains(MousePos))
+    {
+        resume.setFillColor(Color(100, 100, 100, 100));  resume.setCharacterSize(45); window.draw(resume);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {           
+            if (Player_Health <= 0)
+            {
+                current_level = 1;
+                Player.setPosition(500, 500);
+                Player_Health = 100;
+                Score = 0;
+                menu_num = 0;
+                zombies.clear();
+                TotalSpawnedZombies = 0;
+                PortalOpen = false;
+                smg_buy = false;
+                shotgun_buy = false;
+                speed_pow = false;
+                reload_pow = false;
+                sniper_buy = false;
+                speedmulti = 1;
+                reloadmulti = 1;
+                Money = 0;
+                Wall_Bounds.clear();
+                HealthPacks.clear();
+                bloodeffects.clear();
+                Curr_Gun_state = Pistol;
+                playerspeed = 175;
+                SwtichCurrentWallBounds();
+                Current_Wave1 = 0;
+                MusicPlayer.stop();
+                current_song = 0;
+                MusicPlayer.play();
+                pistolammostock = 36;
+                rifleammostock = 90;
+                shotgunammostock = 24;
+                sniperammostock = 15;
+                pistolbulletsloaded = 9;
+                riflebulletsloaded = 30;
+                shotgunbulletsloaded = 8;
+                sniperbulletsloaded = 5;
+            }
+            else
+            {
+                ifstream inf("savegame.txt");
+                inf >> current_level;
+                inf >> Player_Health;
+                inf >> Score;
+                inf.close();
+                zombies.clear();
+                TotalSpawnedZombies = 0;
+                PortalOpen = false;
+                smg_buy = false;
+                shotgun_buy = false;
+                speed_pow = false;
+                reload_pow = false;
+                sniper_buy = false;
+                speedmulti = 1;
+                reloadmulti = 1;
+                Money = 0;
+                Wall_Bounds.clear();
+                HealthPacks.clear();
+                bloodeffects.clear();
+                Curr_Gun_state = Pistol;
+                playerspeed = 175;
+                SwtichCurrentWallBounds();
+                Current_Wave1 = 0;
+                MusicPlayer.stop();
+                current_song = 0;
+                MusicPlayer.play();
+                pistolammostock = 36;
+                rifleammostock = 90;
+                shotgunammostock = 24;
+                sniperammostock = 15;
+                pistolbulletsloaded = 9;
+                riflebulletsloaded = 30;
+                shotgunbulletsloaded = 8;
+                sniperbulletsloaded = 5;
+            }
+            menu_num = 0;
+        }
+    }
+    else
+    {
+        resume.setFillColor(Color(225, 225, 225, 225)); resume.setCharacterSize(40); window.draw(resume);
+    }
+
+}
+
+void Credits(Font font)
+{
+    Text first; first.setFont(font); first.setString("Abdullah Sheriff"); first.setFillColor(Color(225, 225, 225, 225)); first.setPosition(globalcenter.x - 300, globalcenter.y - 300); first.setCharacterSize(32); window.draw(first);
+    Text second; second.setFont(font); second.setString("Abdelrahman Ahmed Saber"); second.setFillColor(Color(225, 225, 225, 225)); second.setPosition(globalcenter.x - 300, globalcenter.y - 200); second.setCharacterSize(32); window.draw(second);
+    Text third; third.setFont(font); third.setString("Abdelrahman Ahmed Ezzat"); third.setFillColor(Color(225, 225, 225, 225)); third.setPosition(globalcenter.x - 300, globalcenter.y - 100); third.setCharacterSize(32); window.draw(third);
+    Text fourth; fourth.setFont(font); fourth.setString("Abdelrahman Tamer Mohamed"); fourth.setFillColor(Color(225, 225, 225, 225)); fourth.setPosition(globalcenter.x - 300, globalcenter.y); fourth.setCharacterSize(32); window.draw(fourth);
+    Text fifth; fifth.setFont(font); fifth.setString("Shahd Hani"); fifth.setFillColor(Color(225, 225, 225, 225)); fifth.setPosition(globalcenter.x - 300, globalcenter.y + 100); fifth.setCharacterSize(32); window.draw(fifth);
+    Text sixth; sixth.setFont(font); sixth.setString("Mohamed Magdy"); sixth.setFillColor(Color(225, 225, 225, 225)); sixth.setPosition(globalcenter.x - 300, globalcenter.y + 200); sixth.setCharacterSize(32); window.draw(sixth);
+}
+
+void Exit(Font font)
+{
+    Text escape; escape.setFont(font); escape.setString(" do you want to exit "); escape.setFillColor(Color(225, 225, 225, 225)); escape.setPosition(globalcenter.x - 200, globalcenter.y - 250); escape.setCharacterSize(32); window.draw(escape);
+
+    Text no; no.setFont(font); no.setString("no"); no.setPosition(globalcenter.x - 150, globalcenter.y - 150); FloatRect collesion1 = no.getGlobalBounds();
+    if (collesion1.contains(MousePos))
+    {
+        no.setFillColor(Color(100, 100, 100, 100));  no.setCharacterSize(45); window.draw(no);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 1;
+        }
+    }
+    else
+    {
+        no.setFillColor(Color(225, 225, 225, 225));  no.setCharacterSize(40); window.draw(no);
+    }
+
+    Text yes; yes.setFont(font); yes.setString("yes"); yes.setPosition(globalcenter.x + 50, globalcenter.y - 150); FloatRect collesion2 = yes.getGlobalBounds();
+    if (collesion2.contains(MousePos))
+    {
+        yes.setFillColor(Color(100, 100, 100, 100));  yes.setCharacterSize(40); window.draw(yes);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            window.close();
+        }
+    }
+    else
+    {
+        yes.setFillColor(Color(225, 225, 225, 225));  yes.setCharacterSize(32); window.draw(yes);
+    }
+}
+
+void Pause(Font font)
+{
+    pause_menu.setTexture(Pause_menu);
+    pause_menu.setPosition(globalcenter.x - 85, globalcenter.y - 150);
+    window.draw(pause_menu);
+    {
+        Text resume; resume.setFont(font); resume.setString("continue"); resume.setPosition(globalcenter.x - 40, globalcenter.y - 120); FloatRect collesion1 = resume.getGlobalBounds();
+        if (collesion1.contains(MousePos))
+        {
+            resume.setFillColor(Color(100, 100, 100, 100));  resume.setCharacterSize(30); window.draw(resume);
+            if (Mouse::isButtonPressed(Mouse::Left))
+            {
+                menu_num = 0;
+            }
+        }
+        else
+        {
+            resume.setFillColor(Color(225, 225, 225, 225));  resume.setCharacterSize(25); window.draw(resume);
+        }
+
+
+        Text exit; exit.setFont(font); exit.setString("exit");  exit.setPosition(globalcenter.x - 10, globalcenter.y - 30); FloatRect collesion2 = exit.getGlobalBounds();
+        if (collesion2.contains(MousePos))
+        {
+            exit.setFillColor(Color(100, 100, 100, 100));  exit.setCharacterSize(30); window.draw(exit);
+            if (Mouse::isButtonPressed(Mouse::Left))
+            {
+                ofstream outf("savegame.txt");
+                outf << current_level << endl;
+                outf << Player_Health << endl;
+                outf << Score << endl;
+                outf.close();
+                menu_num = 1;
+            }
+        }
+        else
+        {
+            exit.setFillColor(Color(225, 225, 225, 225)); exit.setCharacterSize(25); window.draw(exit);
+        }
+    }
+}
+
+void open_menu(Font font)
+{
+    Vector2i pixelpos = Mouse::getPosition(window);
+    MousePos = window.mapPixelToCoords(pixelpos);
+    /*if (curr_state==death)
+        menu_num = 6;*/
+    switch (menu_num)
+    {
+    case 1:game_openning_menu(font); break;
+    case 2:Start(font); break;
+    case 3:Credits(font); break;
+    case 4:Exit(font); break;
+    case 5:Pause(font); break;
+    case 6:Game_over(font); break;
+    case 7:Controls(font);
+    }
+
+}
+
+void switch_menu()
+{
+    switch (menu_num)
+    {
+    case 0:menu_num = 5; break;
+    case 2:
+    case 3:
+    case 7:
+    case 4:menu_num = 1; break;
+    }
+
+}
+
+void Menu_Background(Font font)
+{
+    menu_background.setTexture(Menu_background);
+    if (menu_num == 5 || menu_num == 6)
+    {
+        Draw();
+    }
+    else
+    {
+        menu_background.setScale(Vector2f(0.65, 0.65));
+        menu_background.setPosition(globalcenter.x - (960 * 0.65), globalcenter.y - (540 * 0.65));
+        window.draw(menu_background);
+
+        Text high_score; high_score.setFont(font); high_score.setString(" high score : " + to_string(highest_score)); high_score.setFillColor(Color(225, 225, 225, 225)); high_score.setPosition(globalcenter.x + 300, globalcenter.y - 310); high_score.setCharacterSize(32); window.draw(high_score);
+
+    }
+
+}
+
+void Game_over(Font font)
+{
+    Clock clock;
+    clock.getElapsedTime().asSeconds();
+
+    end_game.setTexture(End_game);
+    end_game.setPosition(globalcenter.x - 200, globalcenter.y - 210);
+    window.draw(end_game);
+    Text over; over.setFont(font); over.setString(" GAME OVER "); over.setFillColor(Color(225, 225, 225, 225)); over.setPosition(globalcenter.x - 120, globalcenter.y - 160); over.setCharacterSize(32); window.draw(over);
+    Text back; back.setFont(font); back.setString("back");  back.setPosition(globalcenter.x - 25, globalcenter.y - 95); FloatRect collesion2 = back.getGlobalBounds();
+    if (collesion2.contains(MousePos))
+    {
+        back.setFillColor(Color(100, 100, 100, 100));  back.setCharacterSize(30); window.draw(back);
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            if (highest_score < Score)
+            {
+                highest_score = Score;
+            }
+            ofstream outf("savegame.txt");
+            outf << 1 << endl;
+            outf << 100 << endl;
+            outf << 0 << endl;
+            outf.close();
+            menu_num = 1;
+        }
+    }
+    else
+    {
+        back.setFillColor(Color(225, 225, 225, 225)); back.setCharacterSize(25); window.draw(back);
+    }
+
+}
+
+void Controls(Font font)
+{
+    control.setTexture(Control);
+
+    control.setScale(Vector2f(0.65, 0.65));
+    control.setPosition(globalcenter.x - (960 * 0.65), globalcenter.y - (540 * 0.65));
+    window.draw(control);
 }
