@@ -15,7 +15,7 @@ using namespace std;
 int Player_Health = 100;
 int Score= 0;
 int highest_score = 0;
-int Money= 200000;
+int Money= 0;
 int const speedmoney = 2000;
 int const reloadmoney = 2000;
 float speedmulti = 1;
@@ -34,7 +34,7 @@ bool shotgun_player_intersects = false;
 #define Level1NumWaves 3
 
 #define pistolfirerate 0.2f
-#define pistoldamage 3
+#define pistoldamage 6
 #define pistolspread 0
 #define pistolbulletpershot 1
 #define pistolclipsize 9
@@ -77,10 +77,10 @@ int sniperbulletsloaded = sniperclipsize;
 #define minigundamage 1
 #define minigunspread 1.5
 #define minigunbulletpershot 3
-#define minigunclipsize 200
+#define minigunclipsize 2000
 #define minigunreloadtime 0
-#define minigun_bullets_loaded_per_reload 1
-int minigunammostock = 0;
+#define minigun_bullets_loaded_per_reload minigunclipsize
+int minigunammostock = 99999999;
 int minigunbulletsloaded = minigunclipsize;
 
 using namespace sf;
@@ -984,15 +984,7 @@ void Update(float dt)
         Player_Collision();
 
         Dashing();
-        switch (current_level)
-        {
-        case 2:
-            TimeSlow();
-            break;
-        case 3:      
-            MiniGunAbility();
-            break;
-        }
+
         //zombies
         SpawnZombiesWaves(dt);
         HandleZombieBehaviour(dt);
@@ -1004,6 +996,15 @@ void Update(float dt)
         Shooting();
         Bullet_Movement_Collision(dt);
         Gun_switch_cooldown();
+        switch (current_level)
+        {
+        case 2:
+            TimeSlow();
+            break;
+        case 3:
+            MiniGunAbility();
+            break;
+        }
         if (delayfinished) { Guns_Animation_Handling(); }
         camera_shake();
 
@@ -1110,7 +1111,7 @@ void Player_Collision()
         {
             if (Player.getGlobalBounds().intersects(HealthPacks[i].getGlobalBounds()))
             {
-                Player_Health += 5;
+                Player_Health += 20;
                 HealthPacks.erase(HealthPacks.begin() + i);
             }
         }
@@ -1123,9 +1124,9 @@ void Player_Collision()
     {
         if (Player.getGlobalBounds().intersects(AmmoPacks[i].getGlobalBounds()))
         {
-            rifleammostock += 15 ;
-            shotgunammostock += 4;
-            sniperammostock += 5;
+            rifleammostock += 30;
+            shotgunammostock += 8;
+            sniperammostock += 10;
             AmmoPacks.erase(AmmoPacks.begin() + i);
         }
     }
@@ -1346,23 +1347,23 @@ void MiniGunAbility()
     {
         isMinigunActive = true;
         isMinigunReady = false;
+        Curr_Gun_state = MiniGun;
+        *current_ammo += 100;
     }
     if (isMinigunActive && !isMinigunReady)
     {
         minigun_counter += playerdeltatime;
-        Curr_Gun_state = MiniGun;
-        if (*current_ammo <=0)
+        if (minigun_counter >= 3)
         {
-            isMinigunActive = false;
             Curr_Gun_state = Pistol;
+            isMinigunActive = false;           
             minigun_counter = 0;
-            *current_ammo += 200;
         }
     }
     if (!isMinigunActive && !isMinigunReady)
     {
         minigun_counter += playerdeltatime;
-        if (minigun_counter > 6.0)
+        if (minigun_counter >= 6.0)
         {
             isMinigunReady = true;
             minigun_counter = 0;
@@ -1484,6 +1485,10 @@ void Switch_Current_Gun_Attributes()
         current_bullets_loaded_per_reload = minigun_bullets_loaded_per_reload;
         Current_shoot_Buffer = &minigun_shoot_Sound;
         camera_shake_magnitude = 20;
+        if (*current_ammo_stock <= 0)
+        {
+            *current_ammo_stock = 99999;
+        }
     }
 }
 void Shooting()
@@ -1567,6 +1572,10 @@ void Shooting()
         }
 
     }
+    if (*current_ammo > *current_ammo_stock && Curr_Gun_state != MiniGun)
+    {
+        *current_ammo = current_clip_size;
+    }
     //std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
 }
 void Bullet_Movement_Collision(float dt)
@@ -1612,7 +1621,7 @@ void Bullet_Movement_Collision(float dt)
                 {
                     int random_num = rand() % 100;
                     zombies[j].isdeath = true;
-                    if (random_num > 80 && random_num < 91)
+                    if (random_num > 60 && random_num < 81)
                     {
 
                         Sprite newhealthpack;
@@ -1622,7 +1631,7 @@ void Bullet_Movement_Collision(float dt)
                         break;
 
                     }
-                    else if (random_num > 90 && random_num < 100)
+                    else if (random_num > 80 && random_num < 100)
                     {
                         Sprite newammostock;
                         newammostock.setTexture(ammo_smg_photo);
@@ -1801,7 +1810,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 25 * Current_Wave1)
+    if (TotalSpawnedZombies >= 35 * Current_Wave1)
     {
         canspawn = false;
     }
