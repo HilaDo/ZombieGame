@@ -1,0 +1,8 @@
+open ZOMBIEGAMEe and open ZOMBIEGAMEe.exe to start the game-
+
+2nd level ability is time slow, it slow's down time for the zombies and bullet movement but not the player, shoot zombies while time is slowed and when the effect is gone
+the bullet will continue forward normally,
+
+3rd level ability is MiniGun, it gives you a minigun with unlimited ammo for 3 seconds.
+
+Enjoy! made by Abdllah sherif samir, abdelrahman ahmed ezzat, abdelrahman tamer, abdelrahman ahmed saber, shahd hani, mohamed magdy

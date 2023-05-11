@@ -1442,6 +1442,10 @@ void Switch_Current_Gun_Attributes()
         camera_shake_magnitude = 3;
         Current_shoot_Buffer = &rifle_shoot_Sound;
         Current_reload_Buffer = &rifle_reload_Sound;
+        if (riflebulletsloaded > 30)
+        {
+            riflebulletsloaded = 30;
+        }
         break;
     case Shotgun:
         current_fire_rate = shotgunfirerate;
@@ -1456,6 +1460,10 @@ void Switch_Current_Gun_Attributes()
         camera_shake_magnitude = 7;
         Current_shoot_Buffer = &shotgun_shoot_Buffer;
         Current_reload_Buffer = &shotgun_reload_Buffer;
+        if (shotgunbulletsloaded > 8)
+        {
+            shotgunbulletsloaded = 8;
+        }
         break;
     case Sniper:
         current_fire_rate = sniperfirerate;
@@ -1470,6 +1478,10 @@ void Switch_Current_Gun_Attributes()
         camera_shake_magnitude = 12;
         Current_shoot_Buffer = &sniper_shoot_Sound;
         Current_reload_Buffer = &sniper_reload_Sound;
+        if (sniperbulletsloaded > 5)
+        {
+            sniperbulletsloaded = 5;
+        }
         break;
     case MiniGun:
         current_fire_rate = minigunfirerate;
@@ -3163,6 +3175,7 @@ void Start(Font font)
                 inf >> current_level;
                 inf >> Player_Health;
                 inf >> Score;
+                inf >> highest_score;
                 inf.close();
                 zombies.clear();
                 TotalSpawnedZombies = 0;
@@ -3359,6 +3372,7 @@ void Game_over(Font font)
             outf << 1 << endl;
             outf << 100 << endl;
             outf << 0 << endl;
+            outf << highest_score;
             outf.close();
             menu_num = 1;
         }
