@@ -339,6 +339,7 @@ struct MuzzleFlashEffect
         }
     }
 };
+
 void init_walls(); // function to initilize walls at the start of the game
 void GetTextures(); //function that gets the used textures by the game at the start of the program
 
@@ -413,8 +414,7 @@ void Controls(Font font);
 
 //door 
 
-Texture TDoor;
-Sprite Door[19];
+
 
 
 //level 3 variables
@@ -678,13 +678,11 @@ SoundBuffer sniper_reload_Sound;
 SoundBuffer sniper_pickup_Sound;
 
 SoundBuffer minigun_shoot_Sound;
-SoundBuffer minigun_pickup_sound;
 
-Sound MainSound;
-Sound shootsound;
+Sound ReloadSound;
+Sound ShootSound;
 SoundBuffer* Current_shoot_Buffer;
 SoundBuffer* Current_reload_Buffer;
-SoundBuffer* Current_pickup_Buffer;
 
 SoundBuffer music[3];
 Sound MusicPlayer;
@@ -728,8 +726,8 @@ int main()
     init_walls();
     GetTextures();
     MusicPlayer.setVolume(64);
-    MainSound.setVolume(48);
-    shootsound.setVolume(48);
+    ReloadSound.setVolume(48);
+    ShootSound.setVolume(48);
     ambientlight.setAreaOpacity(150);
     ambientlight.setAreaColor(Color::Black);
     Player.setTexture(WalkAnimation[0]);
@@ -795,7 +793,6 @@ void init_walls()
     //level 3
     background3();
     wall3();
-    block3();
 }
 void GetTextures()
 {
@@ -933,7 +930,6 @@ void GetTextures()
     sniper_pickup_Sound.loadFromFile("sounds to use/Sniper/SniperPickupSound.WAV");
 
     minigun_shoot_Sound.loadFromFile("sounds to use/MiniGun/MiniGunShootSound.wav");
-    minigun_pickup_sound.loadFromFile("sounds to use/MiniGun/MiniGunPickupSound.WAV");
 
     SpeedCola_T.loadFromFile("SpeedCola.png");
     StaminaUp_T.loadFromFile("StaminUp.png");
@@ -1126,7 +1122,7 @@ void Player_Collision()
         if (Player.getGlobalBounds().intersects(AmmoPacks[i].getGlobalBounds()))
         {
             rifleammostock += 30;
-            shotgunammostock += 8;
+            shotgunammostock += 4;
             sniperammostock += 10;
             AmmoPacks.erase(AmmoPacks.begin() + i);
         }
@@ -1180,10 +1176,6 @@ void Player_Collision()
         playerspeed = 175;
         SwtichCurrentWallBounds();
         Current_Wave1 = 0;
-        pistolammostock = 36;
-        rifleammostock = 90;
-        shotgunammostock = 24;
-        sniperammostock = 15;
         pistolbulletsloaded = 9;
         riflebulletsloaded = 30;
         shotgunbulletsloaded = 8;
@@ -1313,6 +1305,7 @@ void draw_dash_line()
     window.draw(dasheline);
 }
 
+//abilties
 void TimeSlow()
 {
     if (Keyboard::isKeyPressed(Keyboard::F) && Slowready)
@@ -1510,8 +1503,8 @@ void Shooting()
         MuzzleFlashEffect newmuzzleeffect;
         newmuzzleeffect.MuzzleEffect.setPosition(Player.getPosition());
         muzzleEffects.push_back(newmuzzleeffect);
-        shootsound.setBuffer(*Current_shoot_Buffer);
-        shootsound.play();
+        ShootSound.setBuffer(*Current_shoot_Buffer);
+        ShootSound.play();
         for (int i = 0; i < current_bullets_per_shot; i++)
         {
             bullet newbullet;
@@ -1533,6 +1526,7 @@ void Shooting()
             *current_ammo -= 1;
         }
     }
+    //reloading
     if (((Keyboard::isKeyPressed(Keyboard::R) && *current_ammo < current_clip_size && *current_ammo_stock >0) ||(*current_ammo <= 0 && *current_ammo_stock > 0))||isreloading)
     {
         if (!isreloading)
@@ -1546,14 +1540,15 @@ void Shooting()
         }
         isreloading = true;
         reload_time_counter += playerdeltatime;
-        if (MainSound.getStatus() != Sound::Playing && !reload_trigger)
+        //play reload sound
+        if (ReloadSound.getStatus() != Sound::Playing && !reload_trigger)
         {
-            MainSound.setPitch(1 * (1 / reloadmulti));
-            MainSound.setBuffer(*Current_reload_Buffer);
-            MainSound.play();
+            ReloadSound.setPitch(1 / reloadmulti);
+            ReloadSound.setBuffer(*Current_reload_Buffer);
+            ReloadSound.play();
             reload_trigger = true;
         }
-        if (reload_time_counter > current_reload_time)
+        if (reload_time_counter > current_reload_time)//finished reloading
         {         
             reload_trigger = false;
             if (*current_ammo_stock >= current_clip_size || (Curr_Gun_state == Gun_State::Shotgun && *current_ammo_stock > 0))
@@ -1575,7 +1570,7 @@ void Shooting()
             }
             reload_time_counter = 0;
         }
-        if ((Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left)))
+        if ((Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left))||(Curr_Gun_state == Gun_State::Shotgun&&*current_ammo >= shotgunclipsize))
         {
             isreloading = false;
         }
@@ -1628,7 +1623,6 @@ void Bullet_Movement_Collision(float dt)
                     zombies[j].isdeath = true;
                     if (random_num > 70 && random_num < 81)
                     {
-
                         Sprite newhealthpack;
                         newhealthpack.setTexture(Health_Texture);
                         newhealthpack.setPosition(zombies[j].shape.getPosition());
@@ -2045,25 +2039,6 @@ void block()
     ME1[4].setPosition(1042, 518);//
     ME1[5].setPosition(0, -20);//
     ME1[6].setPosition(1878, -20);//
-
-    //door
-    TDoor.loadFromFile("LevelAssets/Box.png");
-    for (int i = 1; i < 17; i++)
-    {
-        Door[i].setTexture(TDoor);
-    }
-    for (int i = 0; i < 6; i++)
-    {
-        Door[i].setPosition(760, -30 + (35 * i));
-    }
-    for (int i = 6; i < 11; i++)
-    {
-        Door[i].setPosition(1630 + (46 * (i - 6)), 500);
-    }
-    for (int i = 11; i < 17; i++)
-    {
-        Door[i].setPosition(1020, 775 + (35 * (i - 11)));
-    }
 }
 
 //level 2 functions
@@ -2158,25 +2133,6 @@ void block2()
     ME2[6].setPosition(605, -30);
     ME2[7].setPosition(1290, -30);
 
-
-
-    TDoor.loadFromFile("LevelAssets/Box.png");
-    for (int i = 1; i < 17; i++)
-    {
-        Door[i].setTexture(TDoor);
-    }
-
-    //left door
-    for (int i = 0; i < 8; i++)
-    {
-        Door[i].setPosition(590, 330 + (35 * i));
-    }
-
-    //right door
-    for (int i = 8; i < 15; i++)
-    {
-        Door[i].setPosition(1273, 80 + (35 * i));
-    }
 }
 
 
@@ -2265,32 +2221,6 @@ void wall3()
     Wall_Bounds3.push_back(Vwall3[15].getGlobalBounds());
     Wall_Bounds3.push_back(Vwall3[16].getGlobalBounds());
     Wall_Bounds3.push_back(Vwall3[17].getGlobalBounds());
-}
-
-void block3()
-{
-    TDoor.loadFromFile("LevelAssets/Box.png");
-
-    for (int i = 1; i < 17; i++)
-    {
-        Door[i].setTexture(TDoor);
-    }
-    //upper door
-    for (int i = 1; i < 6; i++)
-    {
-        Door[i].setPosition(750, 265 + (35 * i));
-    };
-    //mid door
-    for (int i = 6; i < 12; i++)
-    {
-        Door[i].setPosition(515 + (46 * i), 485);
-    };
-    //lowwer door
-    for (int i = 12; i < 17; i++)
-    {
-        Door[i].setPosition(1060, 360 + (35 * i));
-    };
-
 }
 
 
@@ -2782,7 +2712,8 @@ void Draw()
         MiniGun_S.setRotation(Gun.getRotation());
         window.draw(MiniGun_S);
         break;
-    }
+    } 
+
     for (int i = 0; i < HealthPacks.size(); i++)
     {
         window.draw(HealthPacks[i]);
@@ -3061,24 +2992,24 @@ void buying_weapons()
         Money -= money_smg;
         smg_buy = true;
         Score += 100;
-        MainSound.setBuffer(rifle_pickup_sound);
-        MainSound.play();
+        ReloadSound.setBuffer(rifle_pickup_sound);
+        ReloadSound.play();
     }
     if (Player.getGlobalBounds().intersects(shotgun_buying.getGlobalBounds()) && Money >= money_shotgun && !shotgun_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= money_shotgun;
         shotgun_buy = true;
         Score += 100;
-        MainSound.setBuffer(shotgun_pickup_Buffer);
-        MainSound.play();
+        ReloadSound.setBuffer(shotgun_pickup_Buffer);
+        ReloadSound.play();
     }
     if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()) && Money >= 2000 && !sniper_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
         Money -= 2000;
         sniper_buy = true;
         Score += 100;
-        MainSound.setBuffer(sniper_pickup_Sound);
-        MainSound.play();
+        ReloadSound.setBuffer(sniper_pickup_Sound);
+        ReloadSound.play();
     }
 }
 void game_openning_menu(Font font)
@@ -3176,10 +3107,6 @@ void Start(Font font)
             MusicPlayer.stop();
             current_song = 0;
             MusicPlayer.play();
-            pistolammostock = 36;
-            rifleammostock = 90;
-            shotgunammostock = 24;
-            sniperammostock = 15;
             pistolbulletsloaded = 9;
             riflebulletsloaded = 30;
             shotgunbulletsloaded = 8;
@@ -3225,10 +3152,6 @@ void Start(Font font)
                 MusicPlayer.stop();
                 current_song = 0;
                 MusicPlayer.play();
-                pistolammostock = 36;
-                rifleammostock = 90;
-                shotgunammostock = 24;
-                sniperammostock = 15;
                 pistolbulletsloaded = 9;
                 riflebulletsloaded = 30;
                 shotgunbulletsloaded = 8;
@@ -3262,10 +3185,6 @@ void Start(Font font)
                 MusicPlayer.stop();
                 current_song = 0;
                 MusicPlayer.play();
-                pistolammostock = 36;
-                rifleammostock = 90;
-                shotgunammostock = 24;
-                sniperammostock = 15;
                 pistolbulletsloaded = 9;
                 riflebulletsloaded = 30;
                 shotgunbulletsloaded = 8;
