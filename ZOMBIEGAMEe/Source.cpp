@@ -1576,13 +1576,13 @@ void Shooting()
                 *current_ammo = *current_ammo_stock;
                 *current_ammo_stock = 0;
             }
-            if (Curr_Gun_state != Shotgun)
+            if (Curr_Gun_state != Shotgun || (Curr_Gun_state == Shotgun && *current_ammo >= current_clip_size))
             {
                 isreloading = false;
             }
             reload_time_counter = 0;
         }
-        if ((Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left))||(Curr_Gun_state == Gun_State::Shotgun&&*current_ammo >= shotgunclipsize))
+        if (Curr_Gun_state == Gun_State::Shotgun && Mouse::isButtonPressed(Mouse::Left))
         {
             isreloading = false;
         }
