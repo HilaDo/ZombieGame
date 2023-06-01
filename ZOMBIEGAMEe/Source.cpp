@@ -96,6 +96,32 @@ enum Gun_State
     Pistol, Smg, Shotgun,Sniper,MiniGun
 };
 Gun_State Curr_Gun_state = Gun_State::Pistol;
+struct Trail
+{
+    vector<Vector2f> positions;
+    int maxlength;
+    float thickness;
+    Color color;
+    void addTrailSegment(Vector2f position) {
+        positions.push_back(position);
+
+        while (positions.size() > maxlength) {
+            positions.erase(positions.begin());
+        }
+    }
+    void drawTrail(sf::RenderWindow& window) {
+        // Create a rectangle shape for each segment of the trail
+        for (int i = 1; i < positions.size(); i++) {
+            sf::Vector2f segment = positions[i] - positions[i - 1];
+            float segmentLength = std::sqrt(segment.x * segment.x + segment.y * segment.y);
+            sf::RectangleShape trailSegment(sf::Vector2f(segmentLength, thickness));
+            trailSegment.setPosition(positions[i - 1]);
+            trailSegment.setRotation(std::atan2(segment.y, segment.x) * 180 / 3.14159265f);
+            trailSegment.setFillColor(sf::Color(color.r, color.g, color.b, color.a * (1.0f - i / (float)positions.size())));
+            window.draw(trailSegment);
+        }
+    }
+};
 struct bullet
 {
     Sprite shape;
@@ -108,9 +134,12 @@ struct bullet
     int bullet_image_counter = 0;
     RadialLight lighteffect;
     Gun_State curr_gun_state;
+    Trail guntrail;
+    int zombieshit = 0;
     void animation(float dt,Texture bulletanimation[])
     {
-
+        cout << zombieshit << endl;
+        guntrail.addTrailSegment(shape.getPosition());
         if (curr_gun_state == Shotgun || curr_gun_state == MiniGun)
         {
             lighteffect.setIntensity(500);
@@ -325,15 +354,17 @@ struct BloodEffect
 struct MuzzleFlashEffect
 {
     RadialLight MuzzleEffect;
-    float counter = 0;
+    float counter = 1;
     bool deleteme = false;
-    float muzzlerange = 100;
-    void handlemuzzleeffect(float dt)
+    float muzzlerange = 50;
+    void handlemuzzleeffect(float dt,Vector2f pos)
     {
+        MuzzleEffect.setColor(Color::Yellow);
+        MuzzleEffect.setPosition(pos);
         counter += dt;
-        MuzzleEffect.setIntensity(200);
-        MuzzleEffect.setRange(muzzlerange);
-        if (counter >= 0.1f)
+        MuzzleEffect.setIntensity(50 * 1/counter);
+        MuzzleEffect.setRange(muzzlerange * 1/counter);
+        if (counter >= 1.2f)
         {
             deleteme = true;
         }
@@ -462,7 +493,7 @@ Sprite ME1[7];
 
 
 
-CircleShape test(10);
+CircleShape test(5);
 Vector2i center;
 Vector2f globalcenter;
 Vector2f globalorigin;
@@ -470,7 +501,6 @@ Vector2f globalorigin;
 unsigned long long numberoftotalbulletsshot = 0;
 //all font declear
 Font normal_font;
-Font blood_font;
 // declear all text ui 
 Text precent_sign;  
 Text score_text;
@@ -731,7 +761,6 @@ int main()
     ambientlight.setAreaOpacity(150);
     ambientlight.setAreaColor(Color::Black);
     Player.setTexture(WalkAnimation[0]);
-    Player.setOrigin(Vector2f(Player.getGlobalBounds().width /2 , Player.getGlobalBounds().height / 2));
     Player.setPosition(Vector2f(500, 500));
     Gun.setOrigin(Player.getOrigin());
     Clock clock;
@@ -761,8 +790,8 @@ int main()
         if (menu_num != 0)
         {
             window.clear();
-            Menu_Background(blood_font);
-            open_menu(blood_font);
+            Menu_Background(normal_font);
+            open_menu(normal_font);
             window.display();
             window.setMouseCursorVisible(true);
         }
@@ -892,8 +921,7 @@ void GetTextures()
     speedmachine.setTexture(speedmachine_photo);
     reloadmachine.setTexture(reloadmachine_photo);
     //ui
-    normal_font.loadFromFile("font of score and money.ttf");
-    blood_font.loadFromFile("font of current wave.ttf"); // to load font files 
+    normal_font.loadFromFile("Gore Rough.otf");
     ammo_shotgun_photo.loadFromFile("ammo_shotgun.png");
     ammo_smg_photo.loadFromFile("ammo_smg.png");
     ammo_pistol_photo.loadFromFile("ammo_pistol.png");
@@ -944,9 +972,9 @@ void GetTextures()
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
 
-    music[0].loadFromFile("Sad But True (Remastered).wav");
-    music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    music[2].loadFromFile("Metallica Shadows Follow.wav");
+    //music[0].loadFromFile("Sad But True (Remastered).wav");
+    //music[1].loadFromFile("Seek & Destroy (Remastered).wav");
+    //music[2].loadFromFile("Metallica Shadows Follow.wav");
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
@@ -975,7 +1003,7 @@ void Update(float dt)
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
 
-        MusicHandler();
+        //MusicHandler();
 
         Player_Movement();
         Player_Collision();
@@ -1064,7 +1092,6 @@ void Player_Movement()
         y = 1;
     }
     DashOrigin.setPosition(DashOrigin.getPosition().x, Player.getPosition().y);
-    Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
     Player.move(x * playerdeltatime * playerspeed, y * playerdeltatime * playerspeed);
 }
 void Player_Collision()
@@ -1523,6 +1550,9 @@ void Shooting()
             newbullet.shape.setPosition(test.getPosition());
             newbullet.id = numberoftotalbulletsshot;
             newbullet.curr_gun_state = Curr_Gun_state;
+            newbullet.guntrail.color = Color::Yellow;
+            newbullet.guntrail.thickness = 5;
+            newbullet.guntrail.maxlength = 7;
             Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
             newbullet.currentvelocity = newbullet.maxvelocity * (Norm_dir_vector + (Offset * 0.2f * current_spread));
             newbullet.damage = current_damage;
@@ -1612,6 +1642,7 @@ void Bullet_Movement_Collision(float dt)
             if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()) && zombies[j].last_hit_bullet_id != bullets[i].id && !zombies[j].isdeath)
             {
                 zombies[j].last_hit_bullet_id = bullets[i].id;
+                bullets[i].zombieshit++;
                 zombies[j].health -= bullets[i].damage;
                 if (Curr_Gun_state == Shotgun)
                 {
@@ -1629,7 +1660,13 @@ void Bullet_Movement_Collision(float dt)
                 {
                     zombies[j].shape.move(bullets[i].currentvelocity.x * dt, bullets[i].currentvelocity.y * dt);
                 }
-                if (zombies[j].health <= 0)
+                zombies[j].iszombiehit = true;
+                BloodEffect newbloodeffect;
+                newbloodeffect.BloodShape.setPosition(zombies[j].shape.getPosition());
+                newbloodeffect.BloodShape.setScale(zombies[j].shape.getScale().x * -0.5f, zombies[j].shape.getScale().y * 0.5f);
+                newbloodeffect.assign_random_number();
+                bloodeffects.push_back(newbloodeffect);
+                if(zombies[j].health <= 0)
                 {
                     int random_num = rand() % 100;
                     zombies[j].isdeath = true;
@@ -1651,15 +1688,6 @@ void Bullet_Movement_Collision(float dt)
                     Score += 10;
                     Money += 75;
                 }
-                else if (zombies[j].health > 0 && !zombies[j].isdeath)
-                {
-                    zombies[j].iszombiehit = true;
-                    BloodEffect newbloodeffect;
-                    newbloodeffect.BloodShape.setPosition(zombies[j].shape.getPosition());
-                    newbloodeffect.BloodShape.setScale(zombies[j].shape.getScale().x * -0.5f, zombies[j].shape.getScale().y * 0.5f);
-                    newbloodeffect.assign_random_number();
-                    bloodeffects.push_back(newbloodeffect);
-                }
             }
 
         }
@@ -1671,7 +1699,7 @@ void Bullet_Movement_Collision(float dt)
             muzzleEffects.erase(muzzleEffects.begin() + i);
             break;
         }
-        muzzleEffects[i].handlemuzzleeffect(dt);
+        muzzleEffects[i].handlemuzzleeffect(dt,test.getPosition());
     }
 }
 void Guns_Animation_Handling()
@@ -2239,10 +2267,14 @@ void wall3()
 //drawing function
 void Draw()
 {
+    Player.setOrigin(Vector2f(Player.getLocalBounds().width / 2, Player.getLocalBounds().height / 2));
     RadialLight light;
     light.setRange(400);
     light.setIntensity(150);
     light.setColor(Color(229, 238, 141));
+    CircleShape testpoint(5);
+    testpoint.setOrigin(testpoint.getLocalBounds().width / 2, testpoint.getLocalBounds().height / 2);
+    testpoint.setPosition(Player.getPosition());
     if (menu_num != 5 && menu_num != 6) {
         ambientlight.clear();
         window.clear();
@@ -2253,18 +2285,14 @@ void Draw()
         Player.setScale(2, 2);
         Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
         Gun.setScale(0.5, 0.5);
-        Crosshair.setPosition(Gun.getPosition().x  + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 75);        
     }
     else
     {
         Player.setScale(-2, 2);
         Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
         Gun.setScale(0.5, -0.5);
-        Crosshair.setPosition(Gun.getPosition().x + 50 + cos(Gun.getRotation() / 180 * pi) * 75, Gun.getPosition().y+ sin(Gun.getRotation() / 180 * pi) * 75);
     }
     test.setOrigin(test.getLocalBounds().width / 2, test.getLocalBounds().height / 2);
-    test.setPosition(Gun.getPosition().x - 30 + cos(Gun.getRotation() / 180 * pi) * 50, Gun.getPosition().y - 18 + sin(Gun.getRotation() / 180 * pi) * 50);
-    test.setRadius(20);
     switch (current_level)
     {
     case 1:
@@ -2646,10 +2674,12 @@ void Draw()
         bloodeffects[i].BloodShape.setOrigin(bloodeffects[i].BloodShape.getLocalBounds().width / 2, bloodeffects[i].BloodShape.getLocalBounds().height / 2);
         window.draw(bloodeffects[i].BloodShape);
     }
+    window.draw(Player);
     for (int i = 0; i < bullets.size(); i++)
     {
-        window.draw(bullets[i].shape);
+        bullets[i].shape.setOrigin(bullets[i].shape.getLocalBounds().width / 2, bullets[i].shape.getLocalBounds().height / 2);
         window.draw(bullets[i].lighteffect);
+        bullets[i].guntrail.drawTrail(window);
         ambientlight.draw(bullets[i].lighteffect);
     }
     for (int i = 0; i < muzzleEffects.size(); i++)
@@ -2690,42 +2720,49 @@ void Draw()
     {
         Player.setScale(6, 6);
     }
-    window.draw(Player);
     switch (Curr_Gun_state)
     {
     case Pistol:
-        Pistol_S.setScale(Gun.getScale().x * 3/4, Gun.getScale().y * 3 / 4);
+        Pistol_S.setOrigin(Pistol_S.getLocalBounds().width/4, Pistol_S.getLocalBounds().height / 2);
+        test.setPosition(Pistol_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 10, Pistol_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 10);
+        Pistol_S.setScale(Gun.getScale().x, Gun.getScale().y);
         Pistol_S.setPosition(Gun.getPosition().x, Gun.getPosition().y - 10);
         Pistol_S.setRotation(Gun.getRotation());
         window.draw(Pistol_S);
         break;
     case Smg:
+        SMG_S.setOrigin(SMG_S.getLocalBounds().width / 4, SMG_S.getLocalBounds().height / 2);
+        test.setPosition(SMG_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 25, SMG_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 25);
         SMG_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
         SMG_S.setPosition(Gun.getPosition().x - 10, Gun.getPosition().y - 10);
         SMG_S.setRotation(Gun.getRotation());
         window.draw(SMG_S);
         break;
     case Shotgun:
+        ShotGun_S.setOrigin(ShotGun_S.getLocalBounds().width / 4, ShotGun_S.getLocalBounds().height / 2);
+        test.setPosition(ShotGun_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 30, ShotGun_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 30);
         ShotGun_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
-        ShotGun_S.setPosition(Gun.getPosition().x - 10, Gun.getPosition().y - 10);
+        ShotGun_S.setPosition(Gun.getPosition());
         ShotGun_S.setRotation(Gun.getRotation());
         window.draw(ShotGun_S);
         break;
     case Sniper:
+        Sniper_S.setOrigin(Sniper_S.getLocalBounds().width / 4, Sniper_S.getLocalBounds().height / 2);
+        test.setPosition(Sniper_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 40, Sniper_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 40);
         Sniper_S.setScale(Gun.getScale().x * 3 / 4, Gun.getScale().y * 3 / 4);
-        Sniper_S.setPosition(Gun.getPosition().x - 10, Gun.getPosition().y - 10);
+        Sniper_S.setPosition(Gun.getPosition());
         Sniper_S.setRotation(Gun.getRotation());
         window.draw(Sniper_S);
         break;
     case MiniGun:
-        //MiniGun_S.setOrigin(MiniGun_S.getLocalBounds().width / 2, MiniGun_S.getLocalBounds().height / 2);
+        MiniGun_S.setOrigin(MiniGun_S.getLocalBounds().width / 4, MiniGun_S.getLocalBounds().height / 2);
+        test.setPosition(MiniGun_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 10, MiniGun_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 50);
         MiniGun_S.setScale(Gun.getScale().x * 4, Gun.getScale().y * 4);
-        MiniGun_S.setPosition(Gun.getPosition().x - 10, Gun.getPosition().y - 10);
+        MiniGun_S.setPosition(Gun.getPosition());
         MiniGun_S.setRotation(Gun.getRotation());
         window.draw(MiniGun_S);
         break;
     } 
-
     for (int i = 0; i < HealthPacks.size(); i++)
     {
         window.draw(HealthPacks[i]);
@@ -2889,7 +2926,7 @@ void UI()
 
     //score
 
-    score_text.setFont(blood_font); // select the font 
+    score_text.setFont(normal_font); // select the font 
     score_text.setString("Score : " + to_string(Score));
     score_text.setCharacterSize(36);
     score_text.setFillColor(Color(136, 8, 8));
@@ -2906,7 +2943,7 @@ void UI()
     window.draw(money_text);
     // to print  current wave  
 
-    current_wave.setFont(blood_font);
+    current_wave.setFont(normal_font);
     current_wave.setScale(1.5, 1.5);
     current_wave.setString(" Current wave \n\t\t    " + to_string(Current_Wave1));
     current_wave.setCharacterSize(19);
@@ -3101,14 +3138,14 @@ void Start(Font font)
             zombies.clear();
             TotalSpawnedZombies = 0;
             PortalOpen = false;
-            smg_buy = false;
-            shotgun_buy = false;
+            smg_buy = true;
+            shotgun_buy = true;
             speed_pow = false;
             reload_pow = false;
-            sniper_buy = false;
+            sniper_buy = true;
             speedmulti = 1;
             reloadmulti = 1;
-            Money = 0;
+            Money = 100000;
             Wall_Bounds.clear();
             HealthPacks.clear();
             bloodeffects.clear();
