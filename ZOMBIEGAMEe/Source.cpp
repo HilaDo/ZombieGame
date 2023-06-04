@@ -104,13 +104,11 @@ struct Trail
     Color color;
     void addTrailSegment(Vector2f position) {
         positions.push_back(position);
-
         while (positions.size() > maxlength) {
             positions.erase(positions.begin());
         }
     }
     void drawTrail(sf::RenderWindow& window) {
-        // Create a rectangle shape for each segment of the trail
         for (int i = 1; i < positions.size(); i++) {
             sf::Vector2f segment = positions[i] - positions[i - 1];
             float segmentLength = std::sqrt(segment.x * segment.x + segment.y * segment.y);
@@ -138,7 +136,6 @@ struct bullet
     int zombieshit = 0;
     void animation(float dt,Texture bulletanimation[])
     {
-        cout << zombieshit << endl;
         guntrail.addTrailSegment(shape.getPosition());
         if (curr_gun_state == Shotgun || curr_gun_state == MiniGun)
         {
@@ -166,7 +163,7 @@ struct bullet
     }
 };
 bool ishit = false;
-struct Zombie
+struct Enemy
 {
     Sprite shape;
     Sprite SpawnEffect;
@@ -181,14 +178,17 @@ struct Zombie
     float animation_counter = 0;
     float animation_duration = 0.20f;
     int imagecounter = 0;
+    int Main_max_images;
 
     float Death_animation_counter = 0;
     float Death_animation_duration = 0.25f;
     int Death_imagecounter = 0;
+    int Death_max_images;
 
     float Hit_animation_counter = 0;
     float Hit_animation_duration = 0.20f;
     int Hit_imagecounter = 0;
+    int Hit_max_images;
 
     float Spawn_animation_counter = 0;
     float Spawn_animation_duration = 0.15f;
@@ -199,8 +199,13 @@ struct Zombie
     int current_frames = 7;
     float distance_from_player;
     bool isdeath = false;
-    bool iszombiehit = false;
-    bool remove_zombie = false;
+    bool isEnemyhit = false;
+    bool remove_Enemy = false;
+    bool explode = false;
+
+    int Enemytype = 0;
+
+    Vector2f norm_Direction;
     void setspawnlocation()
     {
         SpawnEffect.setPosition(shape.getPosition());
@@ -209,8 +214,13 @@ struct Zombie
         SpawnLight.setRange(200);
         SpawnLight.setIntensity(150);
         SpawnLight.setColor(Color(252, 159, 159));
+        switch (Enemytype)
+        {
+        case 0: Main_max_images = 8; Hit_max_images = 2; Death_max_images = 5; break;
+        case 1:Main_max_images = 8; break;
+        }
     }
-    void Zombie_Behaviour1(Vector2f player_pos,float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[],Texture Spawn_anim[])
+    void EnemyUpdate(Vector2f player_pos, float dt, Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[], Texture Spawn_anim[], bool dashing)
     {
         if (shape.getPosition().x > 1920)
         {
@@ -237,30 +247,29 @@ struct Zombie
                 Spawn_animation_counter = 0;
                 Spawn_imagecounter++;
             }
-        }      
-        if (iszombiehit && !isdeath)
+        }
+        if (isEnemyhit && !isdeath)
         {
-            Hit_animation_counter += dt;         
+            Hit_animation_counter += dt;
             if (Hit_animation_counter >= Hit_animation_duration)
             {
                 Hit_animation_counter = 0;
                 Hit_imagecounter++;
-                if (Hit_imagecounter >= 2)
+                if (Hit_imagecounter >= Hit_max_images)
                 {
-                    iszombiehit = false;
+                    isEnemyhit = false;
                     Hit_imagecounter = 0;
                 }
             }
-            shape.setTexture(hit_anim[Hit_imagecounter]);
         }
-        else if (!isdeath && !iszombiehit)
+        else if (!isdeath && !isEnemyhit)
         {
             animation_counter += dt;
             if (animation_counter >= animation_duration)
             {
                 animation_counter = 0;
                 imagecounter++;
-                if (imagecounter >= current_frames)
+                if (imagecounter >= Main_max_images)
                 {
                     imagecounter = 0;
                 }
@@ -276,13 +285,43 @@ struct Zombie
             }
             Vector2f Direction = player_pos - shape.getPosition();
             float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
-            Vector2f norm_Direction = Direction / magnitude;
-            distance_from_player = magnitude;
+            norm_Direction = Direction / magnitude;
+            distance_from_player = magnitude;          
+        }
+        else if (isdeath)
+        {
+            Death_animation_counter += dt;
+            if (Death_animation_counter >= Death_animation_duration)
+            {
+                if (Death_imagecounter < Death_max_images)
+                {
+                    Death_imagecounter++;
+                }
+                if (Death_animation_counter >= Death_max_images)
+                {
+                    remove_Enemy = true;
+                }
+            }
+        }
+        switch (Enemytype)
+        {
+        case 0: Zombie_Behaviour1(dt, walk_anim, atk_anim, hit_anim, death_anim, Spawn_anim, dashing); break;
+        case 1: SkullBehaviour(player_pos, dt, walk_anim); break;
+        }
+    }
+    void Zombie_Behaviour1(float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[],Texture Spawn_anim[],bool dashing)
+    {      
+        if (isEnemyhit && !isdeath)
+        {
+            shape.setTexture(hit_anim[Hit_imagecounter]);
+        }
+        else if (!isdeath && !isEnemyhit)
+        {
             if (distance_from_player <= 75.0f)
             {
+                Main_max_images = 7;
                 shape.setTexture(atk_anim[imagecounter]);
-                current_frames = 7;
-                if (atkready)
+                if (atkready && !dashing)
                 {
                     Player_Health -= damage;
                     ishit = true;
@@ -291,28 +330,27 @@ struct Zombie
             }
             else
             {
-                current_frames = 8;
+                Main_max_images = 8;
                 shape.setTexture(walk_anim[imagecounter]);
                 currentvelocity = norm_Direction * maxvelocity;
                 shape.move(currentvelocity * dt);
             }
         }
         else if (isdeath)
-        {
-            Death_animation_counter += dt;
-            if (Death_animation_counter >= Death_animation_duration)
-            {
-
-                if (Death_imagecounter < 5)
-                {
-                    Death_imagecounter++;
-                }
-                if (Death_animation_counter >= 5)
-                {
-                    remove_zombie = true;
-                }
-            }
+        {           
             shape.setTexture(death_anim[Death_imagecounter]);
+        }
+    }
+    void SkullBehaviour(Vector2f player_pos, float dt, Texture walk_anim[])
+    {
+        Main_max_images = 8;
+        shape.setTexture(walk_anim[imagecounter]);
+        currentvelocity = norm_Direction * maxvelocity;
+        shape.move(currentvelocity * dt);
+        if (distance_from_player <= 75)
+        {
+            explode = true;
+            remove_Enemy = true;
         }
     }
 };
@@ -362,9 +400,10 @@ struct MuzzleFlashEffect
         MuzzleEffect.setColor(Color::Yellow);
         MuzzleEffect.setPosition(pos);
         counter += dt;
-        MuzzleEffect.setIntensity(50 * 1/counter);
-        MuzzleEffect.setRange(muzzlerange * 1/counter);
-        if (counter >= 1.2f)
+        MuzzleEffect.setIntensity(50);
+        muzzlerange /= counter;
+        MuzzleEffect.setRange(muzzlerange);
+        if (muzzlerange<= 2)
         {
             deleteme = true;
         }
@@ -392,6 +431,8 @@ void TimeSlow();
 void MiniGunAbility();
 
 void calculate_shoot_dir(); // function that calculates the normal direction between the player and the current mouse position
+void KnockBack(float magnitude, Vector2f dir, float dt);
+void explode();
 void buying_weapons(); //function that  open guns for player 
 void select_guns(); // function that switches between guns
 void Switch_Current_Gun_Attributes(); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
@@ -667,6 +708,7 @@ int Portal_imagecounter = 0;
 float slow_counter = 0;
 float slow_multi = 1;
 float minigun_counter = 0;
+float knockbackmag = 0;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
@@ -727,7 +769,7 @@ bool canspawn = true;
 VertexArray dasheline(Quads);
 
 vector<bullet> bullets;
-vector <Zombie> zombies;
+vector <Enemy> zombies;
 vector <BloodEffect> bloodeffects;
 vector<Sprite> HealthPacks;
 vector<Sprite> AmmoPacks;
@@ -972,9 +1014,9 @@ void GetTextures()
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
 
-    //music[0].loadFromFile("Sad But True (Remastered).wav");
-    //music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    //music[2].loadFromFile("Metallica Shadows Follow.wav");
+    music[0].loadFromFile("Sad But True (Remastered).wav");
+    music[1].loadFromFile("Seek & Destroy (Remastered).wav");
+    music[2].loadFromFile("Metallica Shadows Follow.wav");
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
@@ -1003,7 +1045,7 @@ void Update(float dt)
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
 
-        //MusicHandler();
+        MusicHandler();
 
         Player_Movement();
         Player_Collision();
@@ -1072,24 +1114,43 @@ void Player_Movement()
 {
     x = 0;
     y = 0;
+    if (playerspeed > 0)
+    {
+        playerspeed -= 25;
+    }
     if (Keyboard::isKeyPressed(Keyboard::A))
     {
         x = -1; 
         DashOrigin.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 10);
+        if (playerspeed < 175)
+        {
+            playerspeed += 35;
+        }
     }
     if (Keyboard::isKeyPressed(Keyboard::D))
     {
         x = 1;
         DashOrigin.setPosition(Player.getPosition().x - 50, Player.getPosition().y + 10);
+        if (playerspeed < 175)
+        {
+            playerspeed += 35;
+        }
     }
     if (Keyboard::isKeyPressed(Keyboard::W))
     {
         y = -1;
-
+        if (playerspeed < 175)
+        {
+            playerspeed += 35;
+        }
     }
     if (Keyboard::isKeyPressed(Keyboard::S))
     {
         y = 1;
+        if (playerspeed < 175)
+        {
+            playerspeed += 35;
+        }
     }
     DashOrigin.setPosition(DashOrigin.getPosition().x, Player.getPosition().y);
     Player.move(x * playerdeltatime * playerspeed, y * playerdeltatime * playerspeed);
@@ -1402,6 +1463,27 @@ void calculate_shoot_dir()
     
     Gun.setRotation(rotation);
 }
+void KnockBack(float magnitude, Vector2f dir,float dt)
+{
+    while (magnitude > 0)
+    {
+        float multi = 10;
+        Player.move(dir  * multi * magnitude * dt);
+        magnitude -= dt;
+    }
+}
+void explode(float radius,float power,Vector2f Expo_Point)
+{
+    for (int i = 0; i < zombies.size(); i++)
+    {
+        Vector2f Direction = Expo_Point - zombies[i].shape.getPosition();
+        float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
+        if (magnitude <= radius)
+        {
+            zombies[i].health -= power * (radius / magnitude);
+        }
+    }
+}
 void select_guns()
 {
     if (!isMinigunActive)
@@ -1539,6 +1621,7 @@ void Shooting()
         {
             camera_shake_counter = camera_shake_duration;
         }
+        KnockBack(1, -Norm_dir_vector,playerdeltatime);
         MuzzleFlashEffect newmuzzleeffect;
         newmuzzleeffect.MuzzleEffect.setPosition(Player.getPosition());
         muzzleEffects.push_back(newmuzzleeffect);
@@ -1548,6 +1631,7 @@ void Shooting()
         {
             bullet newbullet;
             newbullet.shape.setPosition(test.getPosition());
+            newbullet.shape.setScale(0.5f, 0.5f);
             newbullet.id = numberoftotalbulletsshot;
             newbullet.curr_gun_state = Curr_Gun_state;
             newbullet.guntrail.color = Color::Yellow;
@@ -1660,7 +1744,7 @@ void Bullet_Movement_Collision(float dt)
                 {
                     zombies[j].shape.move(bullets[i].currentvelocity.x * dt, bullets[i].currentvelocity.y * dt);
                 }
-                zombies[j].iszombiehit = true;
+                zombies[j].isEnemyhit = true;
                 BloodEffect newbloodeffect;
                 newbloodeffect.BloodShape.setPosition(zombies[j].shape.getPosition());
                 newbloodeffect.BloodShape.setScale(zombies[j].shape.getScale().x * -0.5f, zombies[j].shape.getScale().y * 0.5f);
@@ -1699,7 +1783,7 @@ void Bullet_Movement_Collision(float dt)
             muzzleEffects.erase(muzzleEffects.begin() + i);
             break;
         }
-        muzzleEffects[i].handlemuzzleeffect(dt,test.getPosition());
+        muzzleEffects[i].handlemuzzleeffect(playerdeltatime,test.getPosition());
     }
 }
 void Guns_Animation_Handling()
@@ -1837,10 +1921,10 @@ void SpawnZombiesWaves(float dt)
     SpawningZombieCounter += dt;
     if (canspawn && SpawningZombieCounter >= 1)
     {
-        Zombie newzombie;
+        Enemy newzombie;
         newzombie.shape.setPosition( 50 +rand() % 1770, 50 +rand() % 930);
         newzombie.damage *= multiplier;
-        newzombie.attack_fire_rate *= (1 / multiplier);
+        newzombie.attack_fire_rate *=(1 / multiplier) ;
         newzombie.maxvelocity *= multiplier;
         newzombie.setspawnlocation();
         zombies.push_back(newzombie);
@@ -1873,12 +1957,12 @@ void HandleZombieBehaviour(float dt)
 {
     for (int i = 0; i < zombies.size(); i++)
     {
-        if (zombies[i].remove_zombie)
+        if (zombies[i].remove_Enemy)
         {
             zombies.erase(zombies.begin() + i);
             break;
         }
-        zombies[i].Zombie_Behaviour1(Player.getPosition(), dt,zombie_walk_animation,zombie_atk_animation,zombie_hit_animation,zombie_death_animation,Zombie_spawn_animation);
+        zombies[i].EnemyUpdate(Player.getPosition(), dt, zombie_walk_animation, zombie_atk_animation, zombie_hit_animation, zombie_death_animation, Zombie_spawn_animation, isdashing);
     }
     for (int i = 0; i < bloodeffects.size(); i++)
     {
@@ -2280,7 +2364,7 @@ void Draw()
         window.clear();
     }
 
-    if (Norm_dir_vector.x > 0)
+    if (Norm_dir_vector.x >= 0)
     {
         Player.setScale(2, 2);
         Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
@@ -2680,12 +2764,8 @@ void Draw()
         bullets[i].shape.setOrigin(bullets[i].shape.getLocalBounds().width / 2, bullets[i].shape.getLocalBounds().height / 2);
         window.draw(bullets[i].lighteffect);
         bullets[i].guntrail.drawTrail(window);
+        if(isSlowing){window.draw(bullets[i].shape); }
         ambientlight.draw(bullets[i].lighteffect);
-    }
-    for (int i = 0; i < muzzleEffects.size(); i++)
-    {
-        window.draw(muzzleEffects[i].MuzzleEffect);
-        ambientlight.draw(muzzleEffects[i].MuzzleEffect);
     }
     for (int i = 0; i < zombies.size(); i++)
     {
@@ -2763,6 +2843,11 @@ void Draw()
         window.draw(MiniGun_S);
         break;
     } 
+    for (int i = 0; i < muzzleEffects.size(); i++)
+    {
+        window.draw(muzzleEffects[i].MuzzleEffect);
+        ambientlight.draw(muzzleEffects[i].MuzzleEffect);
+    }
     for (int i = 0; i < HealthPacks.size(); i++)
     {
         window.draw(HealthPacks[i]);
@@ -3130,7 +3215,7 @@ void Start(Font font)
         newgame.setFillColor(Color(0, 100, 100, 60));  newgame.setCharacterSize(45); window.draw(newgame);
         if (Mouse::isButtonPressed(Mouse::Left))
         {
-            current_level = 1;
+            current_level = 2;
             Player.setPosition(500, 500);
             Player_Health = 100;
             Score = 0;
