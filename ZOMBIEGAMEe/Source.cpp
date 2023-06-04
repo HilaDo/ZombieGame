@@ -310,34 +310,45 @@ struct Enemy
         }
     }
     void Zombie_Behaviour1(float dt,Texture walk_anim[], Texture atk_anim[], Texture hit_anim[], Texture death_anim[],Texture Spawn_anim[],bool dashing)
-    {      
-        if (isEnemyhit && !isdeath)
+    {
+        if (!isdeath)
         {
-            shape.setTexture(hit_anim[Hit_imagecounter]);
-        }
-        else if (!isdeath && !isEnemyhit)
-        {
-            if (distance_from_player <= 75.0f)
+            if (isEnemyhit && !isdeath)
             {
-                Main_max_images = 7;
-                shape.setTexture(atk_anim[imagecounter]);
-                if (atkready && !dashing)
+                shape.setTexture(hit_anim[Hit_imagecounter]);
+            }
+            else if (!isdeath && !isEnemyhit)
+            {
+                if (distance_from_player <= 75.0f)
                 {
-                    Player_Health -= damage;
-                    ishit = true;
-                    atkready = false;
+                    Main_max_images = 7;
+                    shape.setTexture(atk_anim[imagecounter]);
+                    if (atkready && !dashing)
+                    {
+                        Player_Health -= damage;
+                        ishit = true;
+                        atkready = false;
+                    }
+                    currentvelocity = Vector2f(0, 0);
                 }
+                else
+                {
+                    Main_max_images = 8;
+                    shape.setTexture(walk_anim[imagecounter]);
+                }
+            }
+            if (sqrt(currentvelocity.x * currentvelocity.x + currentvelocity.y * currentvelocity.y) < maxvelocity)
+            {
+                currentvelocity = Vector2f(currentvelocity.x += maxvelocity * dt, currentvelocity.y += maxvelocity * dt);
             }
             else
             {
-                Main_max_images = 8;
-                shape.setTexture(walk_anim[imagecounter]);
-                currentvelocity = norm_Direction * maxvelocity;
-                shape.move(currentvelocity * dt);
+                currentvelocity = Vector2f(currentvelocity.x += -(currentvelocity.x / abs(currentvelocity.x)) * dt * 500, currentvelocity.y += -(currentvelocity.y / abs(currentvelocity.y)) * dt * 500);
             }
+            shape.move(Vector2f(currentvelocity.x * norm_Direction.x * dt, currentvelocity.y * norm_Direction.y * dt));
         }
-        else if (isdeath)
-        {           
+        else
+        {
             shape.setTexture(death_anim[Death_imagecounter]);
         }
     }
@@ -431,8 +442,6 @@ void TimeSlow();
 void MiniGunAbility();
 
 void calculate_shoot_dir(); // function that calculates the normal direction between the player and the current mouse position
-void KnockBack(float magnitude, Vector2f dir, float dt);
-void explode();
 void buying_weapons(); //function that  open guns for player 
 void select_guns(); // function that switches between guns
 void Switch_Current_Gun_Attributes(); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
@@ -585,7 +594,7 @@ Sprite MiniGun_ability;
 Sprite SpeedCola_S;
 Sprite StaminaUp_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
+RenderWindow window(VideoMode(1920, 1080), "ZombieGame");
 
 
 Vector2f casingposition;
@@ -712,7 +721,9 @@ float knockbackmag = 0;
 //firerate counter
 float fire_rate_counter;
 //player speed and direction(x,y)
-float x, y, playerspeed = 175;
+Vector2f KnockDir;
+float KnockMag = 0;
+Vector2f MovementDirection(0, 0);
 
 //current gun attributes
 int* current_ammo = &pistolbulletsloaded; // ui
@@ -1014,9 +1025,9 @@ void GetTextures()
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
 
-    music[0].loadFromFile("Sad But True (Remastered).wav");
-    music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    music[2].loadFromFile("Metallica Shadows Follow.wav");
+   // music[0].loadFromFile("Sad But True (Remastered).wav");
+    //music[1].loadFromFile("Seek & Destroy (Remastered).wav");
+    //music[2].loadFromFile("Metallica Shadows Follow.wav");
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
@@ -1045,7 +1056,7 @@ void Update(float dt)
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
 
-        MusicHandler();
+       // MusicHandler();
 
         Player_Movement();
         Player_Collision();
@@ -1074,6 +1085,7 @@ void Update(float dt)
         }
         if (delayfinished) { Guns_Animation_Handling(); }
         camera_shake();
+
 
         previous_player_pos = current_player_pos;
         //vanding
@@ -1112,48 +1124,46 @@ void MusicHandler()
 //Player-related functions
 void Player_Movement()
 {
-    x = 0;
-    y = 0;
-    if (playerspeed > 0)
-    {
-        playerspeed -= 25;
-    }
     if (Keyboard::isKeyPressed(Keyboard::A))
     {
-        x = -1; 
+        if (MovementDirection.x > -175 * speedmulti)
+        {
+            MovementDirection.x -= 1650 * playerdeltatime;
+        }
         DashOrigin.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 10);
-        if (playerspeed < 175)
-        {
-            playerspeed += 35;
-        }
     }
-    if (Keyboard::isKeyPressed(Keyboard::D))
+    else if (Keyboard::isKeyPressed(Keyboard::D))
     {
-        x = 1;
-        DashOrigin.setPosition(Player.getPosition().x - 50, Player.getPosition().y + 10);
-        if (playerspeed < 175)
+        if (MovementDirection.x < 175 * speedmulti)
         {
-            playerspeed += 35;
+            MovementDirection.x += 1650 * playerdeltatime ;
         }
+        DashOrigin.setPosition(Player.getPosition().x - 50, Player.getPosition().y + 10);
     }
     if (Keyboard::isKeyPressed(Keyboard::W))
     {
-        y = -1;
-        if (playerspeed < 175)
+        if (MovementDirection.y > -175 * speedmulti)
         {
-            playerspeed += 35;
+            MovementDirection.y -= 1650 * playerdeltatime;
         }
     }
-    if (Keyboard::isKeyPressed(Keyboard::S))
+    else if (Keyboard::isKeyPressed(Keyboard::S))
     {
-        y = 1;
-        if (playerspeed < 175)
+        if (MovementDirection.y < 175 * speedmulti)
         {
-            playerspeed += 35;
+            MovementDirection.y += 1650 * playerdeltatime;
         }
+    }
+    if (MovementDirection.x < -0.1 || MovementDirection.x > 0.1)
+    {
+        MovementDirection.x += -(MovementDirection.x / abs(MovementDirection.x)) * playerdeltatime * 500;
+    }
+    if (MovementDirection.y < -0.1 || MovementDirection.y > 0.1)
+    {
+        MovementDirection.y += -(MovementDirection.y / abs(MovementDirection.y)) * playerdeltatime * 500;
     }
     DashOrigin.setPosition(DashOrigin.getPosition().x, Player.getPosition().y);
-    Player.move(x * playerdeltatime * playerspeed, y * playerdeltatime * playerspeed);
+    Player.move(MovementDirection * playerdeltatime);
 }
 void Player_Collision()
 {
@@ -1168,25 +1178,11 @@ void Player_Collision()
             Player_Bounds.intersects(Wall_bound, intersection);
             if (intersection.width < intersection.height)
             {
-                if (Player_Bounds.left < Wall_bound.left)
-                {
-                    Player.move(-playerspeed * playerdeltatime, 0);
-                }
-                else
-                {
-                    Player.move(playerspeed * playerdeltatime, 0);
-                }
+                Player.move(-MovementDirection.x * playerdeltatime, 0);
             }
             else
             {
-                if (Player_Bounds.top < Wall_bound.top)
-                {
-                    Player.move(0, -playerspeed * playerdeltatime);
-                }
-                else
-                {
-                    Player.move(0, playerspeed * playerdeltatime);
-                }
+                Player.move(0, -MovementDirection.y * playerdeltatime);
             }
         }
     }
@@ -1235,7 +1231,6 @@ void Player_Collision()
         shotgun_player_intersects = false;
     //vandingmachine
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()) && Money >= speedmoney && speed_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
-        playerspeed *= 2;
         speedmulti = 2;
         Money -= speedmoney;
         speed_pow = true;
@@ -1261,7 +1256,6 @@ void Player_Collision()
         Wall_Bounds.clear();
         HealthPacks.clear();
         Curr_Gun_state = Pistol;
-        playerspeed = 175;
         SwtichCurrentWallBounds();
         Current_Wave1 = 0;
         pistolbulletsloaded = 9;
@@ -1272,7 +1266,7 @@ void Player_Collision()
 }
 void Switch_States()
 {
-    if (x == 1 || x == -1 || y == 1 || y == -1)
+    if (MovementDirection.x < -0.1 || MovementDirection.x > 0.1 || MovementDirection.y < -0.1 || MovementDirection.y > 0.1)
     {
         curr_state = state::walk;
     }
@@ -1347,7 +1341,8 @@ void Dashing()
     {
         isdashing = true;
         dashready = false;
-        playerspeed = 4000.0f;
+        MovementDirection.x *= 20.0f;
+        MovementDirection.y *= 20.0f;
     }
     if (isdashing && !dashready)
     {
@@ -1356,7 +1351,8 @@ void Dashing()
         if (timesincedash > 0.05f)
         {
             isdashing = false;
-            playerspeed = 175 * speedmulti;
+            MovementDirection.x /= 20.0f;
+            MovementDirection.y /= 20.0f;
             timesincedash = 0;
         }
     }
@@ -1462,27 +1458,6 @@ void calculate_shoot_dir()
     float rotation = atan2(Norm_dir_vector.y,Norm_dir_vector.x) * 180 / pi;
     
     Gun.setRotation(rotation);
-}
-void KnockBack(float magnitude, Vector2f dir,float dt)
-{
-    while (magnitude > 0)
-    {
-        float multi = 10;
-        Player.move(dir  * multi * magnitude * dt);
-        magnitude -= dt;
-    }
-}
-void explode(float radius,float power,Vector2f Expo_Point)
-{
-    for (int i = 0; i < zombies.size(); i++)
-    {
-        Vector2f Direction = Expo_Point - zombies[i].shape.getPosition();
-        float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
-        if (magnitude <= radius)
-        {
-            zombies[i].health -= power * (radius / magnitude);
-        }
-    }
 }
 void select_guns()
 {
@@ -1621,7 +1596,24 @@ void Shooting()
         {
             camera_shake_counter = camera_shake_duration;
         }
-        KnockBack(1, -Norm_dir_vector,playerdeltatime);
+        switch (Curr_Gun_state)
+        {
+        case Pistol:
+            MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 100, MovementDirection.y += -Norm_dir_vector.y * 100);
+            break;
+        case Smg:
+            MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 25, MovementDirection.y += -Norm_dir_vector.y * 25);
+            break;
+        case Shotgun:
+            MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 200, MovementDirection.y += -Norm_dir_vector.y * 200);
+            break;
+        case Sniper:
+            MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 200, MovementDirection.y += -Norm_dir_vector.y * 200);
+            break;
+        case MiniGun:
+            MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 25, MovementDirection.y += -Norm_dir_vector.y * 25);
+            break;
+        }
         MuzzleFlashEffect newmuzzleeffect;
         newmuzzleeffect.MuzzleEffect.setPosition(Player.getPosition());
         muzzleEffects.push_back(newmuzzleeffect);
@@ -1730,19 +1722,19 @@ void Bullet_Movement_Collision(float dt)
                 zombies[j].health -= bullets[i].damage;
                 if (Curr_Gun_state == Shotgun)
                 {
-                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 1 / 16, bullets[i].currentvelocity.y * dt * 1 / 16);
+                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 35, zombies[j].currentvelocity.y + 35);
                 }
                 else if(Curr_Gun_state == Sniper)
                 {
-                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 10, bullets[i].currentvelocity.y * dt * 10);
+                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 500, zombies[j].currentvelocity.y + 500);
                 }
                 else if (Curr_Gun_state == MiniGun)
                 {
-                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt * 0.0001, bullets[i].currentvelocity.y * dt  *0.0001);
+                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 20, zombies[j].currentvelocity.y + 20);
                 }
                 else
                 {
-                    zombies[j].shape.move(bullets[i].currentvelocity.x * dt, bullets[i].currentvelocity.y * dt);
+                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 100, zombies[j].currentvelocity.y +100);
                 }
                 zombies[j].isEnemyhit = true;
                 BloodEffect newbloodeffect;
@@ -3235,7 +3227,6 @@ void Start(Font font)
             HealthPacks.clear();
             bloodeffects.clear();
             Curr_Gun_state = Pistol;
-            playerspeed = 175;
             SwtichCurrentWallBounds();
             Current_Wave1 = 0;
             MusicPlayer.stop();
@@ -3280,7 +3271,6 @@ void Start(Font font)
                 HealthPacks.clear();
                 bloodeffects.clear();
                 Curr_Gun_state = Pistol;
-                playerspeed = 175;
                 SwtichCurrentWallBounds();
                 Current_Wave1 = 0;
                 MusicPlayer.stop();
@@ -3314,7 +3304,6 @@ void Start(Font font)
                 HealthPacks.clear();
                 bloodeffects.clear();
                 Curr_Gun_state = Pistol;
-                playerspeed = 175;
                 SwtichCurrentWallBounds();
                 Current_Wave1 = 0;
                 MusicPlayer.stop();
