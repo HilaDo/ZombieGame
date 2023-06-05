@@ -24,7 +24,7 @@ float reloadmulti = 1;
 int current_level = 1;
 
 //buying weapon
-bool  smg_buy = false, shotgun_buy = false, sniper_buy = false, speed_pow = false, reload_pow = false;
+bool  smg_buy = false, shotgun_buy = false, sniper_buy = false, rocket_buy = false, speed_pow = false, reload_pow = false;
 int const  money_smg = 1000, money_shotgun = 1500, money_sniper = 2000;
 //to cheak player intersects
 bool smg_player_intersects = false, sniper_player_intersects = false;
@@ -83,6 +83,17 @@ int sniperbulletsloaded = sniperclipsize;
 int minigunammostock = 99999999;
 int minigunbulletsloaded = minigunclipsize;
 
+#define rocketfirerate 2
+#define rocketdamage 300
+#define rocketspread 0
+#define rocketbulletpershot 1
+#define rocketclipsize 1
+#define rocketreloadtime 2
+#define rocket_bullets_loaded_per_reload rocketclipsize
+#define rocket_radius 150
+int rocketammostock = 15;
+int rocketbulletsloaded = rocketclipsize;
+
 using namespace sf;
 using namespace candle;
 
@@ -93,7 +104,7 @@ enum state
 state curr_state = state::idle;
 enum Gun_State
 {
-    Pistol, Smg, Shotgun,Sniper,MiniGun
+    Pistol, Smg, Shotgun,Sniper,MiniGun, RocketLauncher
 };
 Gun_State Curr_Gun_state = Gun_State::Pistol;
 struct Trail
@@ -123,20 +134,26 @@ struct Trail
 struct bullet
 {
     Sprite shape;
+    Sprite effect;
     Vector2f currentvelocity;
     float maxvelocity = 5000.0f;
     float damage;
     int id;
     float animation_counter = 0;
-    float animation_switch_time = 0.1f;
+    float animation_switch_time = 0.03f;
     int bullet_image_counter = 0;
     RadialLight lighteffect;
     Gun_State curr_gun_state;
     Trail guntrail;
     int zombieshit = 0;
-    void animation(float dt,Texture bulletanimation[])
+    bool isRocket = false;
+    bool DrawEffect = false;
+    bool bulletend = false;
+    bool deleteme = false;
+    void animation(float dt,Texture SpawnEffectanimation[],Vector2f playerpos,Texture bulletTexture,Texture ExplosionEffectanimation[])
     {
         guntrail.addTrailSegment(shape.getPosition());
+        shape.setTexture(bulletTexture);
         if (curr_gun_state == Shotgun || curr_gun_state == MiniGun)
         {
             lighteffect.setIntensity(500);
@@ -149,17 +166,53 @@ struct bullet
         }
         lighteffect.setColor(Color::Yellow);
         lighteffect.setPosition(shape.getPosition());
-        animation_counter += dt;
-        if (animation_counter >= animation_switch_time)
+        effect.setScale(0.3, 0.3);
+        if (bullet_image_counter < 60 && DrawEffect)
         {
-            bullet_image_counter++;
-            animation_counter = 0;
-            if (bullet_image_counter > 5)
+            effect.setPosition(playerpos.x,playerpos.y - 25);
+            effect.setTexture(SpawnEffectanimation[bullet_image_counter]);
+            animation_counter += dt;
+            if (animation_counter >= animation_switch_time)
             {
-                bullet_image_counter = 0;
+                bullet_image_counter++;
+                animation_counter = 0;
             }
         }
-        shape.setTexture(bulletanimation[bullet_image_counter]);
+        else
+        {
+            DrawEffect = false;
+            bullet_image_counter = 0;
+            animation_counter = 0;
+        }
+        if (bulletend)
+        {
+            currentvelocity = Vector2f(0, 0);
+            shape.setScale(0.01, 0.01);
+            if (isRocket)
+            {
+                DrawEffect = true;
+                effect.setScale(1.5, 1.5);
+                if (bullet_image_counter < 52)
+                {
+                    effect.setPosition(shape.getPosition());
+                    effect.setTexture(ExplosionEffectanimation[bullet_image_counter]);
+                    animation_counter += dt;
+                    if (animation_counter >= animation_switch_time)
+                    {
+                        bullet_image_counter++;
+                        animation_counter = 0;
+                    }
+                }
+                else
+                {
+                    deleteme = true;
+                }
+            }
+            else
+            {
+                deleteme = true;
+            }
+        }
     }
 };
 bool ishit = false;
@@ -446,6 +499,7 @@ void buying_weapons(); //function that  open guns for player
 void select_guns(); // function that switches between guns
 void Switch_Current_Gun_Attributes(); //function that manages the current held gun attributes, i.e: the current gun fire rate is 1, current gun spread is 0,etc
 void Shooting(); //function that handles shooting and spawning new bullets
+void SpawnBlood(Enemy& enemy);
 void Bullet_Movement_Collision(float dt); //function that handles bullet collision
 void Guns_Animation_Handling();
 void Gun_switch_cooldown();
@@ -574,6 +628,7 @@ Sprite SMG_S;
 Sprite ShotGun_S;
 Sprite Sniper_S;
 Sprite MiniGun_S;
+Sprite RocketL_S;
 Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
@@ -594,7 +649,7 @@ Sprite MiniGun_ability;
 Sprite SpeedCola_S;
 Sprite StaminaUp_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(1920, 1080), "ZombieGame");
+RenderWindow window(VideoMode(1920, 1080), "ZombieGame", Style::Fullscreen);
 
 
 Vector2f casingposition;
@@ -651,6 +706,8 @@ Texture shotgun_reload_animation[14];
 
 Texture MiniGun_Image;
 
+Texture RocketLauncher_Image;
+
 Texture bullet_animation[5];
 
 Texture zombie_walk_animation[8];
@@ -665,6 +722,9 @@ Texture zombie2_death_animation[6];
 
 Texture Zombie_spawn_animation[7];
 Texture zombie_hit_blood_effect[10];
+
+Texture RocketSpawnAnimation[60];
+Texture RocketExplosionAnimation[52];
 
 Texture CrossHair_Texture;
 
@@ -762,8 +822,13 @@ SoundBuffer sniper_pickup_Sound;
 
 SoundBuffer minigun_shoot_Sound;
 
+SoundBuffer Rocket_Shoot_Sound;
+SoundBuffer Rocket_Reload_Sound;
+SoundBuffer Rocket_Explosion_Sound;
+
 Sound ReloadSound;
 Sound ShootSound;
+Sound ExplosionSound;
 SoundBuffer* Current_shoot_Buffer;
 SoundBuffer* Current_reload_Buffer;
 
@@ -811,6 +876,7 @@ int main()
     MusicPlayer.setVolume(64);
     ReloadSound.setVolume(48);
     ShootSound.setVolume(48);
+    ExplosionSound.setVolume(80);
     ambientlight.setAreaOpacity(150);
     ambientlight.setAreaColor(Color::Black);
     Player.setTexture(WalkAnimation[0]);
@@ -962,7 +1028,16 @@ void GetTextures()
     {
         PortalAnimation[i].loadFromFile("FX/WarpGate/tile" + std::to_string(i) + ".png");
     }
+    for (int i = 0; i < 60; i++)
+    {
+        RocketSpawnAnimation[i].loadFromFile("Effect_Kabooms_1/frame (" + std::to_string(i + 1) + ").png");
+    }
+    for (int i = 0; i < 52; i++)
+    {
+        RocketExplosionAnimation[i].loadFromFile("Effect_Explosion2_1/frame (" + std::to_string(i + 1) + ").png");
+    }
     MiniGun_Image.loadFromFile("minigun.png");
+    RocketLauncher_Image.loadFromFile("RocketLauncher.png");
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
     Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2 + 50, Crosshair.getLocalBounds().height / 2);
@@ -1012,6 +1087,10 @@ void GetTextures()
 
     minigun_shoot_Sound.loadFromFile("sounds to use/MiniGun/MiniGunShootSound.wav");
 
+    Rocket_Shoot_Sound.loadFromFile("RocketShootSound.wav");
+    Rocket_Reload_Sound.loadFromFile("RocketReloadSound.wav");
+    Rocket_Explosion_Sound.loadFromFile("RocketExplosionSound.wav");
+
     SpeedCola_T.loadFromFile("SpeedCola.png");
     StaminaUp_T.loadFromFile("StaminUp.png");
 
@@ -1025,9 +1104,9 @@ void GetTextures()
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
 
-   // music[0].loadFromFile("Sad But True (Remastered).wav");
-    //music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    //music[2].loadFromFile("Metallica Shadows Follow.wav");
+    music[0].loadFromFile("Sad But True (Remastered).wav");
+    music[1].loadFromFile("Seek & Destroy (Remastered).wav");
+    music[2].loadFromFile("Metallica Shadows Follow.wav");
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
@@ -1056,7 +1135,7 @@ void Update(float dt)
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
 
-       // MusicHandler();
+        MusicHandler();
 
         Player_Movement();
         Player_Collision();
@@ -1128,7 +1207,7 @@ void Player_Movement()
     {
         if (MovementDirection.x > -175 * speedmulti)
         {
-            MovementDirection.x -= 1650 * playerdeltatime;
+            MovementDirection.x -= 1650 * playerdeltatime * speedmulti;
         }
         DashOrigin.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 10);
     }
@@ -1136,7 +1215,7 @@ void Player_Movement()
     {
         if (MovementDirection.x < 175 * speedmulti)
         {
-            MovementDirection.x += 1650 * playerdeltatime ;
+            MovementDirection.x += 1650 * playerdeltatime * speedmulti;
         }
         DashOrigin.setPosition(Player.getPosition().x - 50, Player.getPosition().y + 10);
     }
@@ -1144,23 +1223,23 @@ void Player_Movement()
     {
         if (MovementDirection.y > -175 * speedmulti)
         {
-            MovementDirection.y -= 1650 * playerdeltatime;
+            MovementDirection.y -= 1650 * playerdeltatime * speedmulti;
         }
     }
     else if (Keyboard::isKeyPressed(Keyboard::S))
     {
         if (MovementDirection.y < 175 * speedmulti)
         {
-            MovementDirection.y += 1650 * playerdeltatime;
+            MovementDirection.y += 1650 * playerdeltatime * speedmulti;
         }
     }
     if (MovementDirection.x < -0.1 || MovementDirection.x > 0.1)
     {
-        MovementDirection.x += -(MovementDirection.x / abs(MovementDirection.x)) * playerdeltatime * 500;
+        MovementDirection.x += -(MovementDirection.x / abs(MovementDirection.x)) * playerdeltatime * 700 * speedmulti;
     }
     if (MovementDirection.y < -0.1 || MovementDirection.y > 0.1)
     {
-        MovementDirection.y += -(MovementDirection.y / abs(MovementDirection.y)) * playerdeltatime * 500;
+        MovementDirection.y += -(MovementDirection.y / abs(MovementDirection.y)) * playerdeltatime * 700 * speedmulti;
     }
     DashOrigin.setPosition(DashOrigin.getPosition().x, Player.getPosition().y);
     Player.move(MovementDirection * playerdeltatime);
@@ -1467,26 +1546,52 @@ void select_guns()
         {
             Curr_Gun_state = Gun_State::Pistol;
             gun_switch_delay_counter = current_fire_rate;
+            if (ReloadSound.getStatus() == Sound::Playing)
+            {
+                ReloadSound.stop();
+            }
             trigger = true;
         }
         if (Keyboard::isKeyPressed(Keyboard::Num2) && smg_buy)
         {
             Curr_Gun_state = Gun_State::Smg;
             gun_switch_delay_counter = current_fire_rate;
+            if (ReloadSound.getStatus() == Sound::Playing)
+            {
+                ReloadSound.stop();
+            }
             trigger = true;
         }
         if (Keyboard::isKeyPressed(Keyboard::Num3) && shotgun_buy)
         {
             Curr_Gun_state = Gun_State::Shotgun;
             gun_switch_delay_counter = current_fire_rate;
+            if (ReloadSound.getStatus() == Sound::Playing)
+            {
+                ReloadSound.stop();
+            }
             trigger = true;
         }
         if (Keyboard::isKeyPressed(Keyboard::Num4) && sniper_buy)
         {
             Curr_Gun_state = Gun_State::Sniper;
             gun_switch_delay_counter = current_fire_rate;
+            if (ReloadSound.getStatus() == Sound::Playing)
+            {
+                ReloadSound.stop();
+            }
             trigger = true;
-        }       
+        }  
+        if (Keyboard::isKeyPressed(Keyboard::Num5) && rocket_buy)
+        {
+            Curr_Gun_state = Gun_State::RocketLauncher;
+            gun_switch_delay_counter = current_fire_rate;
+            if (ReloadSound.getStatus() == Sound::Playing)
+            {
+                ReloadSound.stop();
+            }
+            trigger = true;
+        }
     }
     
     
@@ -1583,6 +1688,24 @@ void Switch_Current_Gun_Attributes()
         {
             *current_ammo_stock = 99999;
         }
+        break;
+    case RocketLauncher:
+        current_fire_rate = rocketfirerate;
+        current_damage = rocketdamage;
+        current_bullets_per_shot = rocketbulletpershot;
+        current_spread = rocketspread;
+        current_ammo = &rocketbulletsloaded;
+        current_ammo_stock = &rocketammostock;
+        current_clip_size = rocketclipsize;
+        current_reload_time = rocketreloadtime * reloadmulti;
+        current_bullets_loaded_per_reload = rocket_bullets_loaded_per_reload;
+        camera_shake_magnitude = 20;
+        Current_shoot_Buffer = &Rocket_Shoot_Sound;
+        Current_reload_Buffer = &Rocket_Reload_Sound;
+        if (rocketbulletsloaded > 30)
+        {
+            rocketbulletsloaded = 30;
+        }
     }
 }
 void Shooting()
@@ -1613,9 +1736,12 @@ void Shooting()
         case MiniGun:
             MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 25, MovementDirection.y += -Norm_dir_vector.y * 25);
             break;
+        case RocketLauncher:
+            MovementDirection = Vector2f(MovementDirection.x += -Norm_dir_vector.x * 300, MovementDirection.y += -Norm_dir_vector.y * 300);
+            break;
         }
         MuzzleFlashEffect newmuzzleeffect;
-        newmuzzleeffect.MuzzleEffect.setPosition(Player.getPosition());
+        newmuzzleeffect.MuzzleEffect.setPosition(test.getPosition());
         muzzleEffects.push_back(newmuzzleeffect);
         ShootSound.setBuffer(*Current_shoot_Buffer);
         ShootSound.play();
@@ -1626,9 +1752,42 @@ void Shooting()
             newbullet.shape.setScale(0.5f, 0.5f);
             newbullet.id = numberoftotalbulletsshot;
             newbullet.curr_gun_state = Curr_Gun_state;
-            newbullet.guntrail.color = Color::Yellow;
-            newbullet.guntrail.thickness = 5;
-            newbullet.guntrail.maxlength = 7;
+            switch (Curr_Gun_state)
+            {
+            case Pistol:
+                newbullet.guntrail.color = Color(239, 177, 7);
+                newbullet.guntrail.thickness = 4;
+                newbullet.guntrail.maxlength = 7;
+                break;
+            case Smg:
+                newbullet.guntrail.color = Color(239, 177, 7);
+                newbullet.guntrail.thickness = 5;
+                newbullet.guntrail.maxlength = 7;
+                break;
+            case Shotgun:
+                newbullet.guntrail.color = Color(239, 177, 7);
+                newbullet.guntrail.thickness = 5;
+                newbullet.guntrail.maxlength = 3;
+                break;
+            case Sniper:
+                newbullet.guntrail.color = Color(239, 177, 7);
+                newbullet.guntrail.thickness = 5;
+                newbullet.guntrail.maxlength = 10;
+                break;
+            case MiniGun:
+                newbullet.guntrail.color = Color(239, 177, 7);
+                newbullet.guntrail.thickness = 4;
+                newbullet.guntrail.maxlength = 3;
+                break;
+            case RocketLauncher:
+                newbullet.guntrail.color = Color::White;
+                newbullet.guntrail.thickness = 4;
+                newbullet.guntrail.maxlength = 3;
+                newbullet.isRocket = true;
+                newbullet.maxvelocity = 1000;
+                newbullet.DrawEffect = true;
+                break;
+            }
             Vector2f Offset(rand() / static_cast<float>(RAND_MAX), rand() / static_cast<float>(RAND_MAX));
             newbullet.currentvelocity = newbullet.maxvelocity * (Norm_dir_vector + (Offset * 0.2f * current_spread));
             newbullet.damage = current_damage;
@@ -1696,17 +1855,67 @@ void Shooting()
     }
     //std::cout << *current_ammo << " " << *current_ammo_stock << " " << current_clip_size << std::endl;
 }
+void SpawnBlood(Enemy& enemy)
+{
+    BloodEffect newbloodeffect;
+    newbloodeffect.BloodShape.setPosition(enemy.shape.getPosition());
+    newbloodeffect.BloodShape.setScale(enemy.shape.getScale().x * -0.5f, enemy.shape.getScale().y * 0.5f);
+    newbloodeffect.assign_random_number();
+    bloodeffects.push_back(newbloodeffect);
+    if (enemy.health <= 0)
+    {
+        int random_num = rand() % 100;
+        enemy.isdeath = true;
+        if (random_num > 70 && random_num < 81)
+        {
+            Sprite newhealthpack;
+            newhealthpack.setTexture(Health_Texture);
+            newhealthpack.setPosition(enemy.shape.getPosition());
+            HealthPacks.push_back(newhealthpack);
+
+        }
+        else if (random_num > 80 && random_num < 90)
+        {
+            Sprite newammostock;
+            newammostock.setTexture(ammo_smg_photo);
+            newammostock.setPosition(enemy.shape.getPosition());
+            AmmoPacks.push_back(newammostock);
+        }
+        Score += 10;
+        Money += 75;
+    }
+}
 void Bullet_Movement_Collision(float dt)
 {
     for (int i = 0; i < bullets.size(); i++)
     {
         bullets[i].shape.move(bullets[i].currentvelocity * dt);
-        bullets[i].animation(dt, bullet_animation);
+        bullets[i].animation(playerdeltatime, RocketSpawnAnimation,Player.getPosition(),bullet_animation[0],RocketExplosionAnimation);
         for (int k = 0; k < Wall_Bounds.size(); k++)
         {
-            if (bullets[i].shape.getGlobalBounds().intersects(Wall_Bounds[k]))
+            if (bullets[i].shape.getGlobalBounds().intersects(Wall_Bounds[k]) && !bullets[i].bulletend)
             {
-                bullets.erase(bullets.begin() + i);
+                if (bullets[i].isRocket)
+                {
+                    ExplosionSound.setBuffer(Rocket_Explosion_Sound);
+                    ExplosionSound.play();
+                    for (int k = 0; k < zombies.size(); k++)
+                    {
+                        float distance = sqrt((zombies[k].shape.getPosition().x - bullets[i].shape.getPosition().x) * (zombies[k].shape.getPosition().x - bullets[i].shape.getPosition().x) + (zombies[k].shape.getPosition().y - bullets[i].shape.getPosition().y) * (zombies[k].shape.getPosition().y - bullets[i].shape.getPosition().y));
+                        if (distance <= rocket_radius)
+                        {
+                            zombies[k].currentvelocity = -Vector2f(zombies[k].currentvelocity.x + 300, zombies[k].currentvelocity.y + 300);
+                            zombies[k].health -= rocketdamage * (15/distance);
+                            SpawnBlood(zombies[k]);
+                        }
+                    }
+                    float distance = sqrt((Player.getPosition().x - bullets[i].shape.getPosition().x) * (Player.getPosition().x - bullets[i].shape.getPosition().x) + (Player.getPosition().y - bullets[i].shape.getPosition().y) * (Player.getPosition().y - bullets[i].shape.getPosition().y));
+                    if (distance <= rocket_radius)
+                    {
+                        Player_Health -= rocketdamage * 0.05;
+                    }
+                }
+                bullets[i].bulletend = true;
                 break;
             }
         }
@@ -1715,54 +1924,52 @@ void Bullet_Movement_Collision(float dt)
     {
         for (int j = 0; j < zombies.size(); j++)
         {
-            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()) && zombies[j].last_hit_bullet_id != bullets[i].id && !zombies[j].isdeath)
+            if (bullets[i].shape.getGlobalBounds().intersects(zombies[j].shape.getGlobalBounds()) && zombies[j].last_hit_bullet_id != bullets[i].id && !zombies[j].isdeath && !bullets[i].bulletend)
             {
                 zombies[j].last_hit_bullet_id = bullets[i].id;
-                bullets[i].zombieshit++;
-                zombies[j].health -= bullets[i].damage;
-                if (Curr_Gun_state == Shotgun)
-                {
-                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 35, zombies[j].currentvelocity.y + 35);
-                }
-                else if(Curr_Gun_state == Sniper)
-                {
-                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 500, zombies[j].currentvelocity.y + 500);
-                }
-                else if (Curr_Gun_state == MiniGun)
-                {
-                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 20, zombies[j].currentvelocity.y + 20);
+                if (bullets[i].isRocket)
+                {    
+                    ExplosionSound.setBuffer(Rocket_Explosion_Sound);
+                    ExplosionSound.play();
+                    for (int k = 0; k < zombies.size(); k++)
+                    {
+                        float distance = sqrt((zombies[k].shape.getPosition().x - bullets[i].shape.getPosition().x) * (zombies[k].shape.getPosition().x - bullets[i].shape.getPosition().x) + (zombies[k].shape.getPosition().y - bullets[i].shape.getPosition().y) * (zombies[k].shape.getPosition().y - bullets[i].shape.getPosition().y));
+                        if (distance <= rocket_radius)
+                        {
+                            zombies[k].currentvelocity = -Vector2f(zombies[k].currentvelocity.x + 300, zombies[k].currentvelocity.y + 300);
+                            zombies[k].health -= rocketdamage * (15 / distance);
+                            SpawnBlood(zombies[k]);
+                        }
+                    }
+                    float distance = sqrt((Player.getPosition().x - bullets[i].shape.getPosition().x) * (Player.getPosition().x - bullets[i].shape.getPosition().x) + (Player.getPosition().y - bullets[i].shape.getPosition().y) * (Player.getPosition().y - bullets[i].shape.getPosition().y));
+                    if (distance <= rocket_radius)
+                    {
+                        Player_Health -= rocketdamage * 0.1;
+                    }
+                    bullets[i].bulletend = true;
+                    break;
                 }
                 else
                 {
-                    zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 100, zombies[j].currentvelocity.y +100);
-                }
-                zombies[j].isEnemyhit = true;
-                BloodEffect newbloodeffect;
-                newbloodeffect.BloodShape.setPosition(zombies[j].shape.getPosition());
-                newbloodeffect.BloodShape.setScale(zombies[j].shape.getScale().x * -0.5f, zombies[j].shape.getScale().y * 0.5f);
-                newbloodeffect.assign_random_number();
-                bloodeffects.push_back(newbloodeffect);
-                if(zombies[j].health <= 0)
-                {
-                    int random_num = rand() % 100;
-                    zombies[j].isdeath = true;
-                    if (random_num > 70 && random_num < 81)
+                    zombies[j].health -= bullets[i].damage;
+                    if (Curr_Gun_state == Shotgun)
                     {
-                        Sprite newhealthpack;
-                        newhealthpack.setTexture(Health_Texture);
-                        newhealthpack.setPosition(zombies[j].shape.getPosition());
-                        HealthPacks.push_back(newhealthpack);
-
+                        zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 35, zombies[j].currentvelocity.y + 35);
                     }
-                    else if (random_num > 80 && random_num < 90)
+                    else if (Curr_Gun_state == Sniper)
                     {
-                        Sprite newammostock;
-                        newammostock.setTexture(ammo_smg_photo);
-                        newammostock.setPosition(zombies[j].shape.getPosition());
-                        AmmoPacks.push_back(newammostock);
+                        zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 500, zombies[j].currentvelocity.y + 500);
                     }
-                    Score += 10;
-                    Money += 75;
+                    else if (Curr_Gun_state == MiniGun)
+                    {
+                        zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 20, zombies[j].currentvelocity.y + 20);
+                    }
+                    else
+                    {
+                        zombies[j].currentvelocity = -Vector2f(zombies[j].currentvelocity.x + 100, zombies[j].currentvelocity.y + 100);
+                    }
+                    zombies[j].isEnemyhit = true;
+                    SpawnBlood(zombies[j]);
                 }
             }
 
@@ -1776,6 +1983,14 @@ void Bullet_Movement_Collision(float dt)
             break;
         }
         muzzleEffects[i].handlemuzzleeffect(playerdeltatime,test.getPosition());
+    }
+    for (int i = 0; i < bullets.size(); i++)
+    {
+        if (bullets[i].deleteme)
+        {
+            bullets.erase(bullets.begin() + i);
+            break;
+        }
     }
 }
 void Guns_Animation_Handling()
@@ -1809,6 +2024,10 @@ void Guns_Animation_Handling()
             gun_frames = 9;
         case MiniGun:
             MiniGun_S.setTexture(MiniGun_Image);
+            break;
+        case RocketLauncher:
+            RocketL_S.setTexture(RocketLauncher_Image);
+            break;
         }
     }
     else if (Keyboard::isKeyPressed(Keyboard::R))
@@ -1843,6 +2062,10 @@ void Guns_Animation_Handling()
             break;
         case MiniGun:
             MiniGun_S.setTexture(MiniGun_Image);
+            break;
+        case RocketLauncher:
+            RocketL_S.setTexture(RocketLauncher_Image);
+            break;
         }
     }
     else
@@ -1851,6 +2074,7 @@ void Guns_Animation_Handling()
         Pistol_S.setTexture(pistol_shoot_animations[0]);
         ShotGun_S.setTexture(shotgun_shoot_animation[0]);
         Sniper_S.setTexture(sniper_shoot_animations[0]);
+        RocketL_S.setTexture(RocketLauncher_Image);
         gun_switch_delay_counter = current_fire_rate;
         MiniGun_S.setTexture(MiniGun_Image);
         trigger = true;
@@ -2751,14 +2975,6 @@ void Draw()
         window.draw(bloodeffects[i].BloodShape);
     }
     window.draw(Player);
-    for (int i = 0; i < bullets.size(); i++)
-    {
-        bullets[i].shape.setOrigin(bullets[i].shape.getLocalBounds().width / 2, bullets[i].shape.getLocalBounds().height / 2);
-        window.draw(bullets[i].lighteffect);
-        bullets[i].guntrail.drawTrail(window);
-        if(isSlowing){window.draw(bullets[i].shape); }
-        ambientlight.draw(bullets[i].lighteffect);
-    }
     for (int i = 0; i < zombies.size(); i++)
     {
         zombies[i].SpawnEffect.setOrigin(zombies[i].SpawnEffect.getLocalBounds().width / 2, zombies[i].SpawnEffect.getLocalBounds().height / 2);      
@@ -2779,6 +2995,19 @@ void Draw()
             zombies[i].shape.setScale(zombies[i].shape.getScale().x, zombies[i].shape.getScale().y);
         }
         window.draw(zombies[i].shape);
+    }
+    for (int i = 0; i < bullets.size(); i++)
+    {
+        bullets[i].effect.setOrigin(bullets[i].effect.getLocalBounds().width / 2, bullets[i].effect.getLocalBounds().height / 2);
+        bullets[i].effect.setOrigin(bullets[i].effect.getLocalBounds().width / 2, bullets[i].effect.getLocalBounds().height / 2);
+        window.draw(bullets[i].lighteffect);
+        bullets[i].guntrail.drawTrail(window);
+        if (isSlowing || bullets[i].isRocket) { window.draw(bullets[i].shape); }
+        if (bullets[i].DrawEffect)
+        {
+            window.draw(bullets[i].effect);
+        }
+        ambientlight.draw(bullets[i].lighteffect);
     }
     if (isdashing)
     {
@@ -2833,6 +3062,14 @@ void Draw()
         MiniGun_S.setPosition(Gun.getPosition());
         MiniGun_S.setRotation(Gun.getRotation());
         window.draw(MiniGun_S);
+        break;
+    case RocketLauncher:
+        RocketL_S.setOrigin(RocketL_S.getLocalBounds().width / 4, RocketL_S.getLocalBounds().height / 2);
+        test.setPosition(RocketL_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 10, RocketL_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 50);
+        RocketL_S.setScale(Gun.getScale().x * 4, Gun.getScale().y * 4);
+        RocketL_S.setPosition(Gun.getPosition());
+        RocketL_S.setRotation(Gun.getRotation());
+        window.draw(RocketL_S);
         break;
     } 
     for (int i = 0; i < muzzleEffects.size(); i++)
@@ -3220,6 +3457,7 @@ void Start(Font font)
             speed_pow = false;
             reload_pow = false;
             sniper_buy = true;
+            rocket_buy = true;
             speedmulti = 1;
             reloadmulti = 1;
             Money = 100000;
