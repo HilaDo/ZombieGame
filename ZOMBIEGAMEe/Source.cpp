@@ -21,7 +21,7 @@ int const reloadmoney = 2000;
 float speedmulti = 1;
 float reloadmulti = 1;
 
-int current_level = 1;
+int current_level = 0;
 
 //buying weapon
 bool  smg_buy = false, shotgun_buy = false, sniper_buy = false, rocket_buy = false, speed_pow = false, reload_pow = false;
@@ -149,10 +149,9 @@ struct bullet
     bool isRocket = false;
     bool DrawEffect = false;
     bool deleteme = false;
-    void animation(float dt,Texture SpawnEffectanimation[],Vector2f playerpos,Texture bulletTexture)
+    void animation(float dt,Texture SpawnEffectanimation[],Vector2f playerpos)
     {
         guntrail.addTrailSegment(shape.getPosition());
-        shape.setTexture(bulletTexture);
         if (curr_gun_state == Shotgun || curr_gun_state == MiniGun)
         {
             lighteffect.setIntensity(500);
@@ -601,25 +600,16 @@ void Draw(); // the main drawing function where everything gets drawn on screen
 void UI();
 
 //menu
-void game_openning_menu(Font font);
-void Start(Font font);
+void game_openning_menu();
+void Start();
 void Credits(Font font);
-void Exit(Font font);
-void Pause(Font font);
-void open_menu(Font font);
+void Exit();
+void Pause();
+void open_menu();
 void switch_menu();
-void Menu_Background(Font font);
-void Game_over(Font font);
-void Controls(Font font);
-
-
-//levels
-
-
-//door 
-
-
-
+void Menu_Background();
+void Game_over();
+void Controls();
 
 //level 3 variables
 
@@ -718,8 +708,33 @@ Sprite MiniGun_ability;
 Sprite SpeedCola_S;
 Sprite StaminaUp_S;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
-RenderWindow window(VideoMode(1920, 1080), "ZombieGame");
+RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Fullscreen);
 
+//menu
+Texture StartButtonTexture;
+Sprite startButton;
+Texture CreditsButtonTexture;
+Sprite creditsButton;
+Texture ExitButtonTexture;
+Sprite exitButton;
+Texture ControlsButtonTexture;
+Sprite controlsButton;
+Texture PlayButtonTexture;
+Sprite PlayButton;
+Texture EscapeButtonTexture;
+Sprite escapeButton;
+Texture NoButtonTexture;
+Sprite noButton;
+Texture YesButtonTexture;
+Sprite yesButton;
+Texture ResumeButtonTextures;
+Sprite resumeButton;
+Texture GameOverButtonTexture;
+Sprite overButton;
+Texture BackButtonTexture;
+Sprite backButton;
+Texture HighScoreTexture;
+Sprite HighScoreButton;
 
 Vector2f casingposition;
 
@@ -777,7 +792,7 @@ Texture MiniGun_Image;
 
 Texture RocketLauncher_Image;
 
-Texture bullet_animation[5];
+Texture bullet_Texture;
 
 Texture zombie_walk_animation[8];
 Texture zombie_atk_animation[7];
@@ -968,8 +983,8 @@ int main()
         if (menu_num != 0)
         {
             window.clear();
-            Menu_Background(normal_font);
-            open_menu(normal_font);
+            Menu_Background();
+            open_menu();
             window.display();
             window.setMouseCursorVisible(true);
         }
@@ -1023,10 +1038,7 @@ void GetTextures()
     {
         DeathAnimation[i].loadFromFile("anim by rows/death/tile (" + std::to_string(i) + ").png");
     }
-    for (int i = 0; i < 5; i++)
-    {
-        bullet_animation[i].loadFromFile("guns/bullet animation/tile" + std::to_string(i) + ".png");
-    }
+    bullet_Texture.loadFromFile("guns/bullet animation/tile0.png");
     for (int i = 0; i < 12; i++)
     {
         pistol_shoot_animations[i].loadFromFile("guns/Sprite-sheets/Pistol_V1.00/Weapon/shooting/tile" + std::to_string(i) + ".png");
@@ -1112,7 +1124,7 @@ void GetTextures()
     speedmachine.setTexture(speedmachine_photo);
     reloadmachine.setTexture(reloadmachine_photo);
     //ui
-    normal_font.loadFromFile("Gore Rough.otf");
+    normal_font.loadFromFile("Okami.otf");
     ammo_shotgun_photo.loadFromFile("ammo_shotgun.png");
     ammo_smg_photo.loadFromFile("ammo_smg.png");
     ammo_pistol_photo.loadFromFile("ammo_pistol.png");
@@ -1162,7 +1174,8 @@ void GetTextures()
     StaminaUp_S.setTexture(StaminaUp_T);
     StaminaUp_S.setScale(0.05,0.05);
     //menu
-    Menu_background.loadFromFile("menu_background1.png");
+    Menu_background.loadFromFile("MenuAndUi/GameBackground.png");
+    menu_background.setTexture(Menu_background);
     Pause_menu.loadFromFile("pause.png");
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
@@ -1170,6 +1183,39 @@ void GetTextures()
     music[0].loadFromFile("Sad But True (Remastered).wav");
     music[1].loadFromFile("Seek & Destroy (Remastered).wav");
     music[2].loadFromFile("Metallica Shadows Follow.wav");
+
+
+    Vector2f scalefactor = Vector2f(0.2, 0.2);
+    BackButtonTexture.loadFromFile("MenuAndUi/BackButton.png");
+    backButton.setTexture(BackButtonTexture);
+    backButton.setScale(scalefactor);
+    ControlsButtonTexture.loadFromFile("MenuAndUi/ControlButton.png");
+    controlsButton.setTexture(ControlsButtonTexture);
+    controlsButton.setScale(scalefactor);
+    CreditsButtonTexture.loadFromFile("MenuAndUi/CreditButton.png");
+    creditsButton.setTexture(CreditsButtonTexture);
+    creditsButton.setScale(scalefactor);
+    EscapeButtonTexture.loadFromFile("MenuAndUi/ExcapeWarningText.png");
+    escapeButton.setTexture(EscapeButtonTexture);
+    escapeButton.setScale(scalefactor);
+    ExitButtonTexture.loadFromFile("MenuAndUi/ExitButton.png");
+    exitButton.setTexture(ExitButtonTexture);
+    exitButton.setScale(scalefactor);
+    GameOverButtonTexture.loadFromFile("MenuAndUi/GameOverText.png");
+    overButton.setTexture(GameOverButtonTexture);
+    overButton.setScale(scalefactor);
+    NoButtonTexture.loadFromFile("MenuAndUi/NoButton.png");
+    noButton.setTexture(NoButtonTexture);
+    noButton.setScale(scalefactor);
+    PlayButtonTexture.loadFromFile("MenuAndUi/PlayButton.png");
+    PlayButton.setTexture(PlayButtonTexture);
+    PlayButton.setScale(scalefactor);
+    ResumeButtonTextures.loadFromFile("MenuAndUi/ResumeButton.png");
+    resumeButton.setTexture(ResumeButtonTextures);
+    resumeButton.setScale(scalefactor);
+    YesButtonTexture.loadFromFile("MenuAndUi/YesButton.png");
+    yesButton.setTexture(YesButtonTexture);
+    yesButton.setScale(scalefactor);
     for (int i = 0; i < 4; i++)
     {
         void1[i].setTexture(Void);
@@ -1811,6 +1857,7 @@ void Shooting()
         for (int i = 0; i < current_bullets_per_shot; i++)
         {
             bullet newbullet;
+            newbullet.shape.setTexture(bullet_Texture);
             newbullet.shape.setPosition(test.getPosition());
             newbullet.shape.setScale(0.5f, 0.5f);
             newbullet.id = numberoftotalbulletsshot;
@@ -1923,7 +1970,7 @@ void Bullet_Movement_Collision(float dt)
     for (int i = 0; i < bullets.size(); i++)
     {
         bullets[i].shape.move(bullets[i].currentvelocity * dt);
-        bullets[i].animation(playerdeltatime, RocketSpawnAnimation,Player.getPosition(),bullet_animation[0]);
+        bullets[i].animation(playerdeltatime, RocketSpawnAnimation,Player.getPosition());
         for (int k = 0; k < Wall_Bounds.size(); k++)
         {
             if (bullets[i].shape.getGlobalBounds().intersects(Wall_Bounds[k]))
@@ -2206,6 +2253,7 @@ void HandleZombieBehaviour(float dt)
         if (Enemies[i]->remove_Enemy)
         {
             Enemies.erase(Enemies.begin() + i);
+            Enemies.shrink_to_fit();
             break;
         }
         Enemies[i]->SpawnAnimation(Zombie_spawn_animation, dt);
@@ -3151,8 +3199,8 @@ void Draw()
     void1[3].setPosition(-2864, -400);
     speedmachine.setScale(0.5, 0.5);
     reloadmachine.setScale(0.5, 0.5);
-    UI();
-    window.draw(Crosshair);
+    //UI();
+    //window.draw(Crosshair);
     if (menu_num != 5 && menu_num != 6)
     {
         window.display();
@@ -3433,76 +3481,16 @@ void buying_weapons()
         ReloadSound.play();
     }
 }
-void game_openning_menu(Font font)
+void game_openning_menu()
 {
-    Text start; start.setFont(font); start.setString("start"); start.setPosition(globalcenter.x - 100, globalcenter.y - 250); FloatRect collesion1 = start.getGlobalBounds();
+    PlayButton.setPosition(globalcenter.x - 500 , globalcenter.y - 100); FloatRect collesion1 = PlayButton.getGlobalBounds();
+    PlayButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    window.draw(PlayButton);
     if (collesion1.contains(MousePos))
     {
-        start.setFillColor(Color(100, 100, 100, 100));  start.setCharacterSize(50); window.draw(start);
         if (Mouse::isButtonPressed(Mouse::Left))
         {
-            menu_num = 2;
-        }
-    }
-    else
-    {
-        start.setFillColor(Color(225, 225, 225, 225));  start.setCharacterSize(45); window.draw(start);
-    }
-
-    Text credits; credits.setFont(font); credits.setString("credits"); credits.setPosition(globalcenter.x - 100, globalcenter.y - 100); FloatRect collesion2 = credits.getGlobalBounds();
-    if (collesion2.contains(MousePos))
-    {
-        credits.setFillColor(Color(100, 100, 100, 100));  credits.setCharacterSize(50); window.draw(credits);
-        if (Mouse::isButtonPressed(Mouse::Left))
-        {
-            menu_num = 3;
-        }
-    }
-    else
-    {
-        credits.setFillColor(Color(225, 225, 225, 225));  credits.setCharacterSize(45); window.draw(credits);
-    }
-
-    Text exit; exit.setFont(font); exit.setString("exit"); exit.setPosition(globalcenter.x - 100, globalcenter.y + 200); FloatRect collesion3 = exit.getGlobalBounds();
-    if (collesion3.contains(MousePos))
-    {
-        exit.setFillColor(Color(100, 100, 100, 100));  exit.setCharacterSize(50); window.draw(exit);
-        if (Mouse::isButtonPressed(Mouse::Left))
-        {
-            menu_num = 4;
-        }
-    }
-    else
-    {
-        exit.setFillColor(Color(225, 225, 225, 225));  exit.setCharacterSize(45); window.draw(exit);
-    }
-
-
-    Text controls; controls.setFont(font); controls.setString("controls"); controls.setPosition(globalcenter.x - 100, globalcenter.y + 50); FloatRect collesion4 = controls.getGlobalBounds();
-    if (collesion4.contains(MousePos))
-    {
-        controls.setFillColor(Color(100, 100, 100, 100));  controls.setCharacterSize(50); window.draw(controls);
-        if (Mouse::isButtonPressed(Mouse::Left))
-        {
-            menu_num = 7;
-        }
-    }
-    else
-    {
-        controls.setFillColor(Color(225, 225, 225, 225));  controls.setCharacterSize(45); window.draw(controls);
-    }
-
-}
-
-void Start(Font font)
-{
-    Text newgame; newgame.setFont(font); newgame.setString("new game"); newgame.setPosition(globalcenter.x - 250, globalcenter.y - 150); FloatRect collesion1 = newgame.getGlobalBounds();
-    if (collesion1.contains(MousePos))
-    {
-        newgame.setFillColor(Color(0, 100, 100, 60));  newgame.setCharacterSize(45); window.draw(newgame);
-        if (Mouse::isButtonPressed(Mouse::Left))
-        {
-            current_level = 2;
+            current_level = 1;
             Player.setPosition(500, 500);
             Player_Health = 100;
             Score = 0;
@@ -3532,162 +3520,141 @@ void Start(Font font)
             riflebulletsloaded = 30;
             shotgunbulletsloaded = 8;
             sniperbulletsloaded = 5;
-        }
-    }
-    else
-    {
-        newgame.setFillColor(Color(225, 225, 225, 225));  newgame.setCharacterSize(40); window.draw(newgame);
-    }
-
-    Text resume; resume.setFont(font); resume.setString("resume");  resume.setPosition(globalcenter.x + 50, globalcenter.y - 150); FloatRect collesion2 = resume.getGlobalBounds();
-    if (collesion2.contains(MousePos))
-    {
-        resume.setFillColor(Color(100, 100, 100, 100));  resume.setCharacterSize(45); window.draw(resume);
-        if (Mouse::isButtonPressed(Mouse::Left))
-        {           
-            if (Player_Health <= 0)
-            {
-                current_level = 1;
-                Player.setPosition(500, 500);
-                Player_Health = 100;
-                Score = 0;
-                menu_num = 0;
-                Enemies.clear();
-                TotalSpawnedZombies = 0;
-                PortalOpen = false;
-                smg_buy = false;
-                shotgun_buy = false;
-                speed_pow = false;
-                reload_pow = false;
-                sniper_buy = false;
-                speedmulti = 1;
-                reloadmulti = 1;
-                Money = 0;
-                Wall_Bounds.clear();
-                HealthPacks.clear();
-                bloodeffects.clear();
-                Curr_Gun_state = Pistol;
-                SwtichCurrentWallBounds();
-                Current_Wave1 = 0;
-                MusicPlayer.stop();
-                current_song = 0;
-                MusicPlayer.play();
-                pistolbulletsloaded = 9;
-                riflebulletsloaded = 30;
-                shotgunbulletsloaded = 8;
-                sniperbulletsloaded = 5;
-            }
-            else
-            {
-                ifstream inf("savegame.txt");
-                inf >> current_level;
-                inf >> Player_Health;
-                inf >> Score;
-                inf >> highest_score;
-                inf.close();
-                Enemies.clear();
-                TotalSpawnedZombies = 0;
-                PortalOpen = false;
-                smg_buy = false;
-                shotgun_buy = false;
-                speed_pow = false;
-                reload_pow = false;
-                sniper_buy = false;
-                speedmulti = 1;
-                reloadmulti = 1;
-                Money = 0;
-                Wall_Bounds.clear();
-                HealthPacks.clear();
-                bloodeffects.clear();
-                Curr_Gun_state = Pistol;
-                SwtichCurrentWallBounds();
-                Current_Wave1 = 0;
-                MusicPlayer.stop();
-                current_song = 0;
-                MusicPlayer.play();
-                pistolbulletsloaded = 9;
-                riflebulletsloaded = 30;
-                shotgunbulletsloaded = 8;
-                sniperbulletsloaded = 5;
-            }
             menu_num = 0;
         }
+        if (PlayButton.getScale().x < 0.3 && PlayButton.getScale().y < 0.3)
+        {
+            PlayButton.setScale(PlayButton.getScale().x + playerdeltatime * 2, PlayButton.getScale().x + playerdeltatime *2);
+        }
     }
     else
     {
-        resume.setFillColor(Color(225, 225, 225, 225)); resume.setCharacterSize(40); window.draw(resume);
+        if (PlayButton.getScale().x > 0.2 && PlayButton.getScale().y > 0.2)
+        {
+            PlayButton.setScale(PlayButton.getScale().x - playerdeltatime * 2, PlayButton.getScale().x - playerdeltatime *2);
+        }
+    }
+    creditsButton.setPosition(globalcenter.x - 500, globalcenter.y); FloatRect collesion2 = creditsButton.getGlobalBounds();
+    creditsButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    window.draw(creditsButton);
+    if (collesion2.contains(MousePos))
+    {
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 3;
+        }
+        if (creditsButton.getScale().x < 0.3 && creditsButton.getScale().y < 0.3)
+        {
+            creditsButton.setScale(creditsButton.getScale().x + playerdeltatime * 2, creditsButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (creditsButton.getScale().x > 0.2 && creditsButton.getScale().y > 0.2)
+        {
+            creditsButton.setScale(creditsButton.getScale().x - playerdeltatime * 2, creditsButton.getScale().x - playerdeltatime * 2);
+        }
+    }
+    exitButton.setPosition(globalcenter.x - 500, globalcenter.y + 200); FloatRect collesion3 = exitButton.getGlobalBounds();
+    exitButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    window.draw(exitButton);
+    if (collesion3.contains(MousePos))
+    {
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 4;
+        }
+        if (exitButton.getScale().x < 0.3 && exitButton.getScale().y < 0.3)
+        {
+            exitButton.setScale(exitButton.getScale().x + playerdeltatime * 2, exitButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (exitButton.getScale().x > 0.2 && exitButton.getScale().y > 0.2)
+        {
+            exitButton.setScale(exitButton.getScale().x - playerdeltatime * 2, exitButton.getScale().x - playerdeltatime * 2);
+        }
     }
 
+
+    controlsButton.setPosition(globalcenter.x - 500, globalcenter.y + 100); FloatRect collesion4 = controlsButton.getGlobalBounds();
+    controlsButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    window.draw(controlsButton);
+    if (collesion4.contains(MousePos))
+    {
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            menu_num = 7;
+        }
+        if (controlsButton.getScale().x < 0.3 && controlsButton.getScale().y < 0.3)
+        {
+            controlsButton.setScale(controlsButton.getScale().x + playerdeltatime * 2, controlsButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (controlsButton.getScale().x > 0.2 && controlsButton.getScale().y > 0.2)
+        {
+            controlsButton.setScale(controlsButton.getScale().x - playerdeltatime * 2, controlsButton.getScale().x - playerdeltatime * 2);
+        }
+    }
 }
 
 void Credits(Font font)
 {
-    Text first; first.setFont(font); first.setString("Abdullah Sheriff"); first.setFillColor(Color(225, 225, 225, 225)); first.setPosition(globalcenter.x - 300, globalcenter.y - 300); first.setCharacterSize(32); window.draw(first);
-    Text second; second.setFont(font); second.setString("Abdelrahman Ahmed Saber"); second.setFillColor(Color(225, 225, 225, 225)); second.setPosition(globalcenter.x - 300, globalcenter.y - 200); second.setCharacterSize(32); window.draw(second);
-    Text third; third.setFont(font); third.setString("Abdelrahman Ahmed Ezzat"); third.setFillColor(Color(225, 225, 225, 225)); third.setPosition(globalcenter.x - 300, globalcenter.y - 100); third.setCharacterSize(32); window.draw(third);
+    Text first; first.setFont(font); first.setString("Abdullah Sheriff"); first.setFillColor(Color(225, 225, 225, 225)); first.setPosition(globalcenter.x - 300, globalcenter.y - 150); first.setCharacterSize(32); window.draw(first);
+    Text second; second.setFont(font); second.setString("Abdelrahman Ahmed Saber"); second.setFillColor(Color(225, 225, 225, 225)); second.setPosition(globalcenter.x - 300, globalcenter.y - 100); second.setCharacterSize(32); window.draw(second);
+    Text third; third.setFont(font); third.setString("Abdelrahman Ahmed Ezzat"); third.setFillColor(Color(225, 225, 225, 225)); third.setPosition(globalcenter.x - 300, globalcenter.y - 50); third.setCharacterSize(32); window.draw(third);
     Text fourth; fourth.setFont(font); fourth.setString("Abdelrahman Tamer Mohamed"); fourth.setFillColor(Color(225, 225, 225, 225)); fourth.setPosition(globalcenter.x - 300, globalcenter.y); fourth.setCharacterSize(32); window.draw(fourth);
-    Text fifth; fifth.setFont(font); fifth.setString("Shahd Hani"); fifth.setFillColor(Color(225, 225, 225, 225)); fifth.setPosition(globalcenter.x - 300, globalcenter.y + 100); fifth.setCharacterSize(32); window.draw(fifth);
-    Text sixth; sixth.setFont(font); sixth.setString("Mohamed Magdy"); sixth.setFillColor(Color(225, 225, 225, 225)); sixth.setPosition(globalcenter.x - 300, globalcenter.y + 200); sixth.setCharacterSize(32); window.draw(sixth);
+    Text fifth; fifth.setFont(font); fifth.setString("Shahd Hani"); fifth.setFillColor(Color(225, 225, 225, 225)); fifth.setPosition(globalcenter.x - 300, globalcenter.y +50); fifth.setCharacterSize(32); window.draw(fifth);
+    Text sixth; sixth.setFont(font); sixth.setString("Mohamed Magdy"); sixth.setFillColor(Color(225, 225, 225, 225)); sixth.setPosition(globalcenter.x - 300, globalcenter.y + 100); sixth.setCharacterSize(32); window.draw(sixth);
 }
 
-void Exit(Font font)
+void Exit()
 {
-    Text escape; escape.setFont(font); escape.setString(" do you want to exit "); escape.setFillColor(Color(225, 225, 225, 225)); escape.setPosition(globalcenter.x - 200, globalcenter.y - 250); escape.setCharacterSize(32); window.draw(escape);
+    escapeButton.setPosition(globalcenter.x - 200, globalcenter.y - 250);window.draw(escapeButton);
 
-    Text no; no.setFont(font); no.setString("no"); no.setPosition(globalcenter.x - 150, globalcenter.y - 150); FloatRect collesion1 = no.getGlobalBounds();
+    noButton.setPosition(globalcenter.x - 150, globalcenter.y - 150); FloatRect collesion1 = noButton.getGlobalBounds();
+    window.draw(noButton);
     if (collesion1.contains(MousePos))
     {
-        no.setFillColor(Color(100, 100, 100, 100));  no.setCharacterSize(45); window.draw(no);
         if (Mouse::isButtonPressed(Mouse::Left))
         {
             menu_num = 1;
         }
     }
-    else
-    {
-        no.setFillColor(Color(225, 225, 225, 225));  no.setCharacterSize(40); window.draw(no);
-    }
 
-    Text yes; yes.setFont(font); yes.setString("yes"); yes.setPosition(globalcenter.x + 50, globalcenter.y - 150); FloatRect collesion2 = yes.getGlobalBounds();
+    yesButton.setPosition(globalcenter.x + 50, globalcenter.y - 150); FloatRect collesion2 = yesButton.getGlobalBounds();
+    window.draw(yesButton);
     if (collesion2.contains(MousePos))
     {
-        yes.setFillColor(Color(100, 100, 100, 100));  yes.setCharacterSize(40); window.draw(yes);
         if (Mouse::isButtonPressed(Mouse::Left))
         {
             window.close();
         }
     }
-    else
-    {
-        yes.setFillColor(Color(225, 225, 225, 225));  yes.setCharacterSize(32); window.draw(yes);
-    }
 }
 
-void Pause(Font font)
+void Pause()
 {
     pause_menu.setTexture(Pause_menu);
     pause_menu.setPosition(globalcenter.x - 85, globalcenter.y - 150);
     window.draw(pause_menu);
     {
-        Text resume; resume.setFont(font); resume.setString("continue"); resume.setPosition(globalcenter.x - 40, globalcenter.y - 120); FloatRect collesion1 = resume.getGlobalBounds();
+        resumeButton.setPosition(globalcenter.x - 40, globalcenter.y - 120); FloatRect collesion1 = resumeButton.getGlobalBounds();
+        window.draw(resumeButton);
         if (collesion1.contains(MousePos))
         {
-            resume.setFillColor(Color(100, 100, 100, 100));  resume.setCharacterSize(30); window.draw(resume);
             if (Mouse::isButtonPressed(Mouse::Left))
             {
                 menu_num = 0;
             }
         }
-        else
-        {
-            resume.setFillColor(Color(225, 225, 225, 225));  resume.setCharacterSize(25); window.draw(resume);
-        }
-
-
-        Text exit; exit.setFont(font); exit.setString("exit");  exit.setPosition(globalcenter.x - 10, globalcenter.y - 30); FloatRect collesion2 = exit.getGlobalBounds();
+        exitButton.setPosition(globalcenter.x - 10, globalcenter.y - 30); FloatRect collesion2 = exitButton.getGlobalBounds();
+        window.draw(exitButton);
         if (collesion2.contains(MousePos))
         {
-            exit.setFillColor(Color(100, 100, 100, 100));  exit.setCharacterSize(30); window.draw(exit);
             if (Mouse::isButtonPressed(Mouse::Left))
             {
                 ofstream outf("savegame.txt");
@@ -3698,14 +3665,10 @@ void Pause(Font font)
                 menu_num = 1;
             }
         }
-        else
-        {
-            exit.setFillColor(Color(225, 225, 225, 225)); exit.setCharacterSize(25); window.draw(exit);
-        }
     }
 }
 
-void open_menu(Font font)
+void open_menu()
 {
     Vector2i pixelpos = Mouse::getPosition(window);
     MousePos = window.mapPixelToCoords(pixelpos);
@@ -3713,13 +3676,12 @@ void open_menu(Font font)
         menu_num = 6;*/
     switch (menu_num)
     {
-    case 1:game_openning_menu(font); break;
-    case 2:Start(font); break;
-    case 3:Credits(font); break;
-    case 4:Exit(font); break;
-    case 5:Pause(font); break;
-    case 6:Game_over(font); break;
-    case 7:Controls(font);
+    case 1:game_openning_menu(); break;
+    case 3:Credits(normal_font); break;
+    case 4:Exit(); break;
+    case 5:Pause(); break;
+    case 6:Game_over(); break;
+    case 7:Controls();
     }
 
 }
@@ -3737,9 +3699,8 @@ void switch_menu()
 
 }
 
-void Menu_Background(Font font)
-{
-    menu_background.setTexture(Menu_background);
+void Menu_Background()
+{   
     if (menu_num == 5 || menu_num == 6)
     {
         Draw();
@@ -3750,13 +3711,13 @@ void Menu_Background(Font font)
         menu_background.setPosition(globalcenter.x - (960 * 0.65), globalcenter.y - (540 * 0.65));
         window.draw(menu_background);
 
-        Text high_score; high_score.setFont(font); high_score.setString(" high score : " + to_string(highest_score)); high_score.setFillColor(Color(225, 225, 225, 225)); high_score.setPosition(globalcenter.x + 300, globalcenter.y - 310); high_score.setCharacterSize(32); window.draw(high_score);
+        Text high_score; high_score.setFont(normal_font); high_score.setString(" high score : " + to_string(highest_score)); high_score.setFillColor(Color(225, 225, 225, 225)); high_score.setPosition(globalcenter.x + 300, globalcenter.y - 310); high_score.setCharacterSize(32); window.draw(high_score);
 
     }
 
 }
 
-void Game_over(Font font)
+void Game_over()
 {
     Clock clock;
     clock.getElapsedTime().asSeconds();
@@ -3764,11 +3725,11 @@ void Game_over(Font font)
     end_game.setTexture(End_game);
     end_game.setPosition(globalcenter.x - 200, globalcenter.y - 210);
     window.draw(end_game);
-    Text over; over.setFont(font); over.setString(" GAME OVER "); over.setFillColor(Color(225, 225, 225, 225)); over.setPosition(globalcenter.x - 120, globalcenter.y - 160); over.setCharacterSize(32); window.draw(over);
-    Text back; back.setFont(font); back.setString("back");  back.setPosition(globalcenter.x - 25, globalcenter.y - 95); FloatRect collesion2 = back.getGlobalBounds();
+    overButton.setPosition(globalcenter.x - 120, globalcenter.y - 160);window.draw(overButton);
+    backButton.setPosition(globalcenter.x - 25, globalcenter.y - 95); FloatRect collesion2 = backButton.getGlobalBounds();
+    window.draw(backButton);
     if (collesion2.contains(MousePos))
     {
-        back.setFillColor(Color(100, 100, 100, 100));  back.setCharacterSize(30); window.draw(back);
         if (Mouse::isButtonPressed(Mouse::Left))
         {
             if (highest_score < Score)
@@ -3784,14 +3745,9 @@ void Game_over(Font font)
             menu_num = 1;
         }
     }
-    else
-    {
-        back.setFillColor(Color(225, 225, 225, 225)); back.setCharacterSize(25); window.draw(back);
-    }
-
 }
 
-void Controls(Font font)
+void Controls()
 {
     control.setTexture(Control);
 
