@@ -460,7 +460,7 @@ struct Explosion
             if (distance <= rocket_radius)
             {
                 Vector2f KnockBackDir = Vector2f(Enemies[k]->shape.getPosition() -Expo_Pos);
-                Enemies[k]->currentvelocity = Vector2f(KnockBackDir);
+                Enemies[k]->currentvelocity = Vector2f(Enemies[k]->currentvelocity + KnockBackDir);
                 Enemies[k]->health -= rocketdamage * (15 / distance);
                 SpawnBlood(*Enemies[k]);
             }
@@ -939,6 +939,8 @@ Sprite end_game;
 Texture Control;
 Sprite control;
 
+Texture HealthBarTexture;
+Sprite HealthBarOverlay;
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
 LightingArea ambientlight(candle::LightingArea::FOG,Vector2f(0,0),Vector2f(1920, 1080));
@@ -1022,6 +1024,8 @@ void GetTextures()
     Tlantren_Lwall2.loadFromFile("lantren_2_Lwall.png");
     Tlantren_Rwall2.loadFromFile("lantren_2_Rwall.png");
     Tlantren_Mwall2.loadFromFile("lantren_2_Mwall.png");
+    HealthBarTexture.loadFromFile("HealthBar.png");
+    HealthBarOverlay.setTexture(HealthBarTexture);
     for (int i = 0; i < 8; i++)
     {
         WalkAnimation[i].loadFromFile("anim by rows/walk/tile" + std::to_string(i) + ".png");
@@ -1197,7 +1201,7 @@ void GetTextures()
     creditsButton.setScale(scalefactor);
     EscapeButtonTexture.loadFromFile("MenuAndUi/ExcapeWarningText.png");
     escapeButton.setTexture(EscapeButtonTexture);
-    escapeButton.setScale(scalefactor);
+    escapeButton.setScale(0.4, 0.4);
     ExitButtonTexture.loadFromFile("MenuAndUi/ExitButton.png");
     exitButton.setTexture(ExitButtonTexture);
     exitButton.setScale(scalefactor);
@@ -2662,8 +2666,8 @@ void Draw()
     CircleShape testpoint(5);
     testpoint.setOrigin(testpoint.getLocalBounds().width / 2, testpoint.getLocalBounds().height / 2);
     testpoint.setPosition(Player.getPosition());
+    ambientlight.clear();
     if (menu_num != 5 && menu_num != 6) {
-        ambientlight.clear();
         window.clear();
     }
 
@@ -3199,13 +3203,13 @@ void Draw()
     void1[3].setPosition(-2864, -400);
     speedmachine.setScale(0.5, 0.5);
     reloadmachine.setScale(0.5, 0.5);
-    //UI();
-    //window.draw(Crosshair);
+    UI();
+    window.draw(Crosshair);
     if (menu_num != 5 && menu_num != 6)
     {
         window.display();
-        ambientlight.display();
     }
+    ambientlight.display();
 }
 void UI()
 {
@@ -3286,61 +3290,48 @@ void UI()
         window.draw(light);
         ambientlight.draw(light);
     }
-    RectangleShape health_bar(Vector2f(140, 15));
+    RectangleShape health_bar(Vector2f(170, 15));
     health_bar.setScale(Vector2f((Player_Health / 100.0) * 2, 2));
-    health_bar.setPosition(window.mapPixelToCoords(Vector2i(60, 20)));
-    RectangleShape missing_health_bar(Vector2f(140, 15));
+    health_bar.setPosition(window.mapPixelToCoords(Vector2i(20, 1020)));
+    health_bar.setFillColor(Color(136, 8, 8));
+    RectangleShape missing_health_bar(Vector2f(170, 15));
     missing_health_bar.setFillColor(Color::White);
     missing_health_bar.setScale(Vector2f(2, 2));
-    missing_health_bar.setPosition(window.mapPixelToCoords(Vector2i(60, 20)));
-    RectangleShape health_bar_background(Vector2f(145 * 2, 20 * 2));
+    missing_health_bar.setPosition(window.mapPixelToCoords(Vector2i(20, 1020)));
+    RectangleShape health_bar_background(Vector2f(175 * 2, 20 * 2));
     health_bar_background.setFillColor(Color::Black);
     health_bar_background.setPosition(health_bar.getPosition().x - 5, health_bar.getPosition().y - 5);
+    window.draw(health_bar_background);
     window.draw(missing_health_bar);
-    if (Player_Health > 0)
+    window.draw(health_bar);
+
+    //  to  draw heart next to health bar 
+    //health_precent_text.setScale(3, 3);
+    health_precent_text.setFont(normal_font);
+    health_precent_text.setString(to_string(Player_Health));
+    health_precent_text.setCharacterSize(52);
+    health_precent_text.setPosition(health_bar.getPosition().x + 360, health_bar.getPosition().y-30 );
+    health_precent_text.setFillColor(Color(136, 8, 8));
+    window.draw(health_precent_text);
+
+    precent_sign.setFillColor(Color(136, 8, 8));
+    precent_sign.setFont(normal_font);
+   // precent_sign.setScale(2, 2);
+    precent_sign.setString(" /100 ");
+    precent_sign.setCharacterSize(32);
+    if (Player_Health >= 100)
     {
-        window.draw(health_bar_background);
-        window.draw(missing_health_bar);
-    }
-    if (Player_Health >= 30)
-    {
-        health_bar.setFillColor(Color(136, 8, 8));
+        precent_sign.setPosition(health_bar.getPosition().x + 420, health_bar.getPosition().y);
     }
     else
     {
-        health_bar.setFillColor(Color(136, 8, 8));
+        precent_sign.setPosition(health_bar.getPosition().x + 400, health_bar.getPosition().y);
     }
-    if (Player_Health > 0)
-        window.draw(health_bar);
-    //  to  draw heart next to health bar 
-    full_heart.setTexture(full_heart_photo);
-    full_heart.setScale(Vector2f(0.15, 0.15));
-    full_heart.setPosition(window.mapPixelToCoords(Vector2i(0, 0)));
-    if (Player_Health > 0)
-        //window.draw(full_heart);
-        // to print health percent text 
-        health_precent_text.setFont(normal_font);
-    health_precent_text.setScale(2, 2);
-    health_precent_text.setString(to_string(Player_Health));
-    health_precent_text.setCharacterSize(12);
-    health_precent_text.setFillColor(Color(128, 128, 128));
-    health_precent_text.setPosition(health_bar.getPosition().x + 120, health_bar.getPosition().y);
-    if (Player_Health >= 0)
-        window.draw(health_precent_text);
-    // to print  { % }
-
-    precent_sign.setFont(normal_font);
-    precent_sign.setScale(2, 2);
-    precent_sign.setString(" % ");
-    precent_sign.setCharacterSize(12);
-    precent_sign.setFillColor(Color(128, 128, 128));
-    precent_sign.setPosition(health_bar.getPosition().x + 150, health_bar.getPosition().y);
-    if (Player_Health >= 0)
-        window.draw(precent_sign);
+    window.draw(precent_sign);
     //to draw money photo
     money.setTexture(money_photo);
     money.setScale(Vector2f(0.07, 0.07));
-    money.setPosition(window.mapPixelToCoords(Vector2i(0, 885)));
+    money.setPosition(window.mapPixelToCoords(Vector2i(0, 920)));
     window.draw(money);
     //{  to draw score and coins title and health percent text  }
 
@@ -3350,7 +3341,7 @@ void UI()
     score_text.setString("Score : " + to_string(Score));
     score_text.setCharacterSize(36);
     score_text.setFillColor(Color(136, 8, 8));
-    score_text.setPosition(window.mapPixelToCoords(Vector2i(0, 980)));
+    score_text.setPosition(window.mapPixelToCoords(Vector2i(300,930 )));
     window.draw(score_text);
 
     // to print money number
@@ -3359,31 +3350,31 @@ void UI()
     money_text.setString(" : " + to_string(Money));
     money_text.setCharacterSize(36);
     money_text.setFillColor(Color(255, 215, 0));
-    money_text.setPosition(window.mapPixelToCoords(Vector2i(80, 890)));
+    money_text.setPosition(window.mapPixelToCoords(Vector2i(100, 930)));
     window.draw(money_text);
     // to print  current wave  
 
     current_wave.setFont(normal_font);
-    current_wave.setScale(1.5, 1.5);
-    current_wave.setString(" Current wave \n\t\t    " + to_string(Current_Wave1));
-    current_wave.setCharacterSize(19);
+    current_wave.setString(" CurreNT Wave\n\t\t   " + to_string(Current_Wave1));
+    current_wave.setCharacterSize(42);
     current_wave.setFillColor(Color(136, 8, 8));
-    current_wave.setPosition(window.mapPixelToCoords(Vector2i(800, 0)));
+    current_wave.setOrigin(current_wave.getLocalBounds().width / 2, current_wave.getLocalBounds().height / 2);
+    current_wave.setPosition(window.mapPixelToCoords(Vector2i(960, 115)));
     window.draw(current_wave);
     // amo and amo stack
 
     current_ammo_text.setFont(normal_font);
     current_ammo_text.setString(to_string(*current_ammo));
-    current_ammo_text.setCharacterSize(22);
+    current_ammo_text.setCharacterSize(52);
     current_ammo_text.setFillColor(Color::White);
     if (Curr_Gun_state == Gun_State::Smg)
     {
-        current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(1233, 577)));
+        current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(1720, 980)));
     }
     else
 
     {
-        current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(1250, 577)));
+        current_ammo_text.setPosition(window.mapPixelToCoords(Vector2i(1720, 980)));
     }
 
     //{to print  amo stock text }
@@ -3397,34 +3388,13 @@ void UI()
     {
         ammo_stock_text.setString(" /" + to_string(*current_ammo_stock));
     }
-    ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(1270, 587)));
-    ammo_stock_text.setCharacterSize(12);
+    ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(1820, 980)));
+    ammo_stock_text.setCharacterSize(36);
     ammo_stock_text.setFillColor(Color::White);
     if (Curr_Gun_state != MiniGun)
     {
         window.draw(ammo_stock_text);
         window.draw(current_ammo_text);
-    }
-    // to draw ammo next to text 
-    if (Curr_Gun_state == Gun_State::Pistol)
-    {
-        ammo_pistol.setTexture(ammo_pistol_photo);
-        ammo_pistol.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
-        window.draw(ammo_pistol);
-    }
-    else if (Curr_Gun_state == Gun_State::Smg)
-    {
-
-        ammo_smg.setTexture(ammo_smg_photo);
-        ammo_smg.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
-        window.draw(ammo_smg);
-    }
-    else if (Curr_Gun_state == Gun_State::Shotgun)
-    {
-
-        ammo_shotgun.setTexture(ammo_shotgun_photo);
-        ammo_shotgun.setPosition(window.mapPixelToCoords(Vector2i(1320, 577)));
-        window.draw(ammo_shotgun);
     }
     //end draw guns 
     slow_ability.setPosition(window.mapPixelToCoords(Vector2i(1200, 50)));
@@ -3481,6 +3451,7 @@ void buying_weapons()
         ReloadSound.play();
     }
 }
+
 void game_openning_menu()
 {
     PlayButton.setPosition(globalcenter.x - 500 , globalcenter.y - 100); FloatRect collesion1 = PlayButton.getGlobalBounds();
@@ -3613,9 +3584,12 @@ void Credits(Font font)
 
 void Exit()
 {
-    escapeButton.setPosition(globalcenter.x - 200, globalcenter.y - 250);window.draw(escapeButton);
+    escapeButton.setOrigin(escapeButton.getLocalBounds().width / 2, escapeButton.getLocalBounds().height / 2);
+    escapeButton.setPosition(globalcenter.x, globalcenter.y - 150);window.draw(escapeButton);
 
-    noButton.setPosition(globalcenter.x - 150, globalcenter.y - 150); FloatRect collesion1 = noButton.getGlobalBounds();
+    noButton.setPosition(globalcenter.x - 150, globalcenter.y - 50); FloatRect collesion1 = noButton.getGlobalBounds();
+    noButton.setOrigin(noButton.getLocalBounds().width / 2, noButton.getLocalBounds().height / 2);
+
     window.draw(noButton);
     if (collesion1.contains(MousePos))
     {
@@ -3623,9 +3597,22 @@ void Exit()
         {
             menu_num = 1;
         }
+        if (noButton.getScale().x < 0.3 && noButton.getScale().y < 0.3)
+        {
+            noButton.setScale(noButton.getScale().x + playerdeltatime * 2, noButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (noButton.getScale().x > 0.2 && noButton.getScale().y > 0.2)
+        {
+            noButton.setScale(noButton.getScale().x - playerdeltatime * 2, noButton.getScale().x - playerdeltatime * 2);
+        }
     }
 
-    yesButton.setPosition(globalcenter.x + 50, globalcenter.y - 150); FloatRect collesion2 = yesButton.getGlobalBounds();
+    yesButton.setPosition(globalcenter.x + 150, globalcenter.y - 50); FloatRect collesion2 = yesButton.getGlobalBounds();
+    yesButton.setOrigin(yesButton.getLocalBounds().width / 2, yesButton.getLocalBounds().height / 2);
+
     window.draw(yesButton);
     if (collesion2.contains(MousePos))
     {
@@ -3633,37 +3620,68 @@ void Exit()
         {
             window.close();
         }
+        if (yesButton.getScale().x < 0.3 && yesButton.getScale().y < 0.3)
+        {
+            yesButton.setScale(yesButton.getScale().x + playerdeltatime * 2, yesButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (yesButton.getScale().x > 0.2 && yesButton.getScale().y > 0.2)
+        {
+            yesButton.setScale(yesButton.getScale().x - playerdeltatime * 2, yesButton.getScale().x - playerdeltatime * 2);
+        }
     }
 }
 
 void Pause()
 {
-    pause_menu.setTexture(Pause_menu);
-    pause_menu.setPosition(globalcenter.x - 85, globalcenter.y - 150);
-    window.draw(pause_menu);
+
+    resumeButton.setPosition(globalcenter.x + 250, globalcenter.y); FloatRect collesion1 = resumeButton.getGlobalBounds();
+    resumeButton.setOrigin(resumeButton.getLocalBounds().width / 2, resumeButton.getLocalBounds().height / 2);
+    window.draw(resumeButton);
+    if (collesion1.contains(MousePos))
     {
-        resumeButton.setPosition(globalcenter.x - 40, globalcenter.y - 120); FloatRect collesion1 = resumeButton.getGlobalBounds();
-        window.draw(resumeButton);
-        if (collesion1.contains(MousePos))
+        if (Mouse::isButtonPressed(Mouse::Left))
         {
-            if (Mouse::isButtonPressed(Mouse::Left))
-            {
-                menu_num = 0;
-            }
+            menu_num = 0;
         }
-        exitButton.setPosition(globalcenter.x - 10, globalcenter.y - 30); FloatRect collesion2 = exitButton.getGlobalBounds();
-        window.draw(exitButton);
-        if (collesion2.contains(MousePos))
+        if (resumeButton.getScale().x < 0.3 && resumeButton.getScale().y < 0.3)
         {
-            if (Mouse::isButtonPressed(Mouse::Left))
-            {
-                ofstream outf("savegame.txt");
-                outf << current_level << endl;
-                outf << Player_Health << endl;
-                outf << Score << endl;
-                outf.close();
-                menu_num = 1;
-            }
+            resumeButton.setScale(resumeButton.getScale().x + playerdeltatime * 2, resumeButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (resumeButton.getScale().x > 0.2 && resumeButton.getScale().y > 0.2)
+        {
+            resumeButton.setScale(resumeButton.getScale().x - playerdeltatime * 2, resumeButton.getScale().x - playerdeltatime * 2);
+        }
+    }
+    exitButton.setPosition(globalcenter.x - 250, globalcenter.y); FloatRect collesion2 = exitButton.getGlobalBounds();
+    exitButton.setOrigin(exitButton.getLocalBounds().width / 2, exitButton.getLocalBounds().height / 2);
+    window.draw(exitButton);
+    if (collesion2.contains(MousePos))
+    {
+        if (Mouse::isButtonPressed(Mouse::Left))
+        {
+            ofstream outf("savegame.txt");
+            outf << current_level << endl;
+            outf << Player_Health << endl;
+            outf << Score << endl;
+            outf.close();
+            menu_num = 1;
+        }
+        if (exitButton.getScale().x < 0.3 && exitButton.getScale().y < 0.3)
+        {
+            exitButton.setScale(exitButton.getScale().x + playerdeltatime * 2, exitButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (exitButton.getScale().x > 0.2 && exitButton.getScale().y > 0.2)
+        {
+            exitButton.setScale(exitButton.getScale().x - playerdeltatime * 2, exitButton.getScale().x - playerdeltatime * 2);
         }
     }
 }
@@ -3719,14 +3737,10 @@ void Menu_Background()
 
 void Game_over()
 {
-    Clock clock;
-    clock.getElapsedTime().asSeconds();
-
-    end_game.setTexture(End_game);
-    end_game.setPosition(globalcenter.x - 200, globalcenter.y - 210);
-    window.draw(end_game);
-    overButton.setPosition(globalcenter.x - 120, globalcenter.y - 160);window.draw(overButton);
-    backButton.setPosition(globalcenter.x - 25, globalcenter.y - 95); FloatRect collesion2 = backButton.getGlobalBounds();
+    overButton.setOrigin(overButton.getLocalBounds().width / 2, overButton.getLocalBounds().height / 2);
+    overButton.setPosition(globalcenter.x, globalcenter.y - 100);window.draw(overButton);
+    backButton.setOrigin(backButton.getLocalBounds().width / 2, backButton.getLocalBounds().height / 2);
+    backButton.setPosition(globalcenter.x, globalcenter.y); FloatRect collesion2 = backButton.getGlobalBounds();
     window.draw(backButton);
     if (collesion2.contains(MousePos))
     {
@@ -3743,6 +3757,17 @@ void Game_over()
             outf << highest_score;
             outf.close();
             menu_num = 1;
+        }
+        if (backButton.getScale().x < 0.3 && backButton.getScale().y < 0.3)
+        {
+            backButton.setScale(backButton.getScale().x + playerdeltatime * 2, backButton.getScale().x + playerdeltatime * 2);
+        }
+    }
+    else
+    {
+        if (backButton.getScale().x > 0.2 && backButton.getScale().y > 0.2)
+        {
+            backButton.setScale(backButton.getScale().x - playerdeltatime * 2, backButton.getScale().x - playerdeltatime * 2);
         }
     }
 }
