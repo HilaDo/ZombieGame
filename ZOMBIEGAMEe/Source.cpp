@@ -262,8 +262,12 @@ struct Zombie : public Enemy
 
 
     float distance_from_player;
-    bool atkready = true;
+    bool atkready = false;
     float damage = 10;
+
+    int maxwalkframes = 8;
+    int maxhitframes = 2;
+    int maxdeathframes = 4;
     void EnemyBehaviour(Texture hit_anim[],Texture atk_anim[],Texture walk_anim[],Texture death_anim[], bool dashing, float dt,Vector2f player_pos) override
     {
         if (isEnemyhit && !isdeath)
@@ -274,7 +278,7 @@ struct Zombie : public Enemy
             {
                 Hit_animation_counter = 0;
                 Hit_imagecounter++;
-                if (Hit_imagecounter >= 2)
+                if (Hit_imagecounter >= maxhitframes)
                 {
                     isEnemyhit = false;
                     Hit_imagecounter = 0;
@@ -288,7 +292,7 @@ struct Zombie : public Enemy
             {
                 animation_counter = 0;
                 imagecounter++;
-                if (imagecounter >= 8)
+                if (imagecounter >= maxwalkframes)
                 {
                     imagecounter = 0;
                 }
@@ -327,12 +331,13 @@ struct Zombie : public Enemy
             Death_animation_counter += dt;
             shape.setTexture(death_anim[Death_imagecounter]);
             if (Death_animation_counter >= Death_animation_duration)
-            {
-                if (Death_imagecounter < 5)
+            {               
+                if (Death_imagecounter <= maxdeathframes)
                 {
                     Death_imagecounter++;
+                    Death_animation_counter = 0;
                 }
-                if (Death_animation_counter >= 5)
+                if (Death_animation_counter > maxdeathframes)
                 {
                     remove_Enemy = true;
                 }
@@ -459,8 +464,7 @@ struct Explosion
             float distance = sqrt((Enemies[k]->shape.getPosition().x - Expo_Pos.x) * (Enemies[k]->shape.getPosition().x - Expo_Pos.x) + (Enemies[k]->shape.getPosition().y - Expo_Pos.y) * (Enemies[k]->shape.getPosition().y - Expo_Pos.y));
             if (distance <= rocket_radius)
             {
-                Vector2f KnockBackDir = Vector2f(Enemies[k]->shape.getPosition() -Expo_Pos);
-                Enemies[k]->currentvelocity = Vector2f(Enemies[k]->currentvelocity + KnockBackDir);
+                Enemies[k]->currentvelocity = -Vector2f(Enemies[k]->currentvelocity.x + 100, Enemies[k]->currentvelocity.y + 100);
                 Enemies[k]->health -= rocketdamage * (15 / distance);
                 SpawnBlood(*Enemies[k]);
             }
@@ -799,6 +803,11 @@ Texture zombie_atk_animation[7];
 Texture zombie_hit_animation[2];
 Texture zombie_death_animation[6];
 
+Texture Golem_walk_animation[8];
+Texture Golem_atk_animation[8];
+Texture Golem_hit_animation[4];
+Texture Golem_death_animation[10];
+
 Texture SkullFire_animations[8];
 
 Texture Zombie_spawn_animation[7];
@@ -1091,6 +1100,24 @@ void GetTextures()
     {
         zombie_death_animation[i].loadFromFile("Zombies Animation/Death/tile" + std::to_string(i) + ".png");
     }
+    //fasel
+    for (int i = 0; i < 8; i++)
+    {
+        Golem_walk_animation[i].loadFromFile("GolemAnimation/walk/tile (" + std::to_string(i+1) + ").png");
+    }
+    for (int i = 0; i < 8; i++)
+    {
+        Golem_atk_animation[i].loadFromFile("GolemAnimation/Atk/tile (" + std::to_string(i+1) + ").png");
+    }
+    for (int i = 0; i < 10; i++)
+    {
+        Golem_death_animation[i].loadFromFile("GolemAnimation/death/tile (" + std::to_string(i+1) + ").png");
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        Golem_hit_animation[i].loadFromFile("GolemAnimation/hit/tile (" + std::to_string(i+1) + ").png");
+    }
+    //fasel
     for (int i = 0; i < 7; i++)
     {
         Zombie_spawn_animation[i].loadFromFile("FX/ZombieSpawnEffect/frame" + std::to_string(i) + ".png");
@@ -1119,7 +1146,6 @@ void GetTextures()
     RocketLauncher_Image.loadFromFile("RocketLauncher.png");
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
-    Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2 + 50, Crosshair.getLocalBounds().height / 2);
     Crosshair.setScale(0.3, 0.3);
     Health_Texture.loadFromFile("health-red_32px.png");
 
@@ -1184,9 +1210,9 @@ void GetTextures()
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
 
-    music[0].loadFromFile("Sad But True (Remastered).wav");
+    /*music[0].loadFromFile("Sad But True (Remastered).wav");
     music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    music[2].loadFromFile("Metallica Shadows Follow.wav");
+    music[2].loadFromFile("Metallica Shadows Follow.wav");*/
 
 
     Vector2f scalefactor = Vector2f(0.2, 0.2);
@@ -1248,7 +1274,7 @@ void Update(float dt)
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
 
-        MusicHandler();
+       // MusicHandler();
 
         Player_Movement();
         Player_Collision();
@@ -1370,11 +1396,25 @@ void Player_Collision()
             Player_Bounds.intersects(Wall_bound, intersection);
             if (intersection.width < intersection.height)
             {
-                Player.move(-MovementDirection.x * playerdeltatime, 0);
+                if (Player_Bounds.left < Wall_bound.left)
+                {
+                    Player.move(-175 * speedmulti * playerdeltatime, 0);
+                }
+                else
+                {
+                    Player.move(175 * speedmulti * playerdeltatime, 0);
+                }
             }
             else
             {
-                Player.move(0, -MovementDirection.y * playerdeltatime);
+                if (Player_Bounds.top < Wall_bound.top)
+                {
+                    Player.move(0, -175 * speedmulti * playerdeltatime);
+                }
+                else
+                {
+                    Player.move(0, 175 * speedmulti * playerdeltatime);
+                }
             }
         }
     }
@@ -2204,8 +2244,8 @@ void SpawnZombiesWaves(float dt)
     SpawningZombieCounter += dt;
     if (canspawn && SpawningZombieCounter >= 1)
     {
-        int randomthing = rand() % 4;
-        if (randomthing <= 2)
+        int randomthing = 1 + rand() % 10;
+        if (randomthing <= 5)
         {
             auto newzombie = make_unique<Zombie>();
             newzombie->type = 0;
@@ -2213,6 +2253,24 @@ void SpawnZombiesWaves(float dt)
             newzombie->damage *= multiplier;
             newzombie->attack_fire_rate *= (1 / multiplier);
             newzombie->maxvelocity *= multiplier;
+            newzombie->SetSpawnLocation();
+            Enemies.push_back(move(newzombie));
+        }
+        else if (randomthing > 5 &&randomthing < 7)
+        {
+            auto newzombie = make_unique<Zombie>();
+            newzombie->type = 2;
+            newzombie->shape.setPosition(150 + rand() % 1770, 150 + rand() % 930);
+            newzombie->damage *= multiplier * 8;
+            newzombie->attack_fire_rate *= (1 / multiplier) * 2;
+            newzombie->animation_duration *= 3;
+            newzombie->Death_animation_duration /= 2;
+            newzombie->maxwalkframes = 8;
+            newzombie->maxhitframes = 4;
+            newzombie->maxdeathframes = 8;
+            newzombie->health *= 10;
+            newzombie->shape.setTexture(Golem_atk_animation[2]);
+            newzombie->maxvelocity *= multiplier / 2;
             newzombie->SetSpawnLocation();
             Enemies.push_back(move(newzombie));
         }
@@ -2269,6 +2327,9 @@ void HandleZombieBehaviour(float dt)
         case 1:
             Enemies[i]->EnemyBehaviour(zombie_hit_animation, zombie_atk_animation, SkullFire_animations, zombie_death_animation, isdashing,dt, Player.getPosition());
             break;
+        case 2:
+            Enemies[i]->EnemyBehaviour(Golem_hit_animation, Golem_atk_animation, Golem_walk_animation, Golem_death_animation, isdashing, dt, Player.getPosition());
+            break;
         }
     }
     for (int i = 0; i < bloodeffects.size(); i++)
@@ -2298,22 +2359,22 @@ void HandleZombieBehaviour(float dt)
                 {
                     if (current_zombie_Bound.left < Wall_bound.left)
                     {
-                        Enemies[i]->shape.move(-2500 * dt, 0);
+                        Enemies[i]->shape.move(-Enemies[i]->maxvelocity * dt, 0);
                     }
                     else
                     {
-                        Enemies[i]->shape.move(2500 * dt, 0);
+                        Enemies[i]->shape.move(Enemies[i]->maxvelocity * dt, 0);
                     }
                 }
                 else
                 {
                     if (current_zombie_Bound.top < Wall_bound.top)
                     {
-                        Enemies[i]->shape.move(0, -2500 * dt);
+                        Enemies[i]->shape.move(0, -Enemies[i]->maxvelocity * dt);
                     }
                     else
                     {
-                        Enemies[i]->shape.move(0, 2500 * dt);
+                        Enemies[i]->shape.move(0, Enemies[i]->maxvelocity * dt);
                     }
                 }
             }
@@ -2666,12 +2727,13 @@ void Draw()
     CircleShape testpoint(5);
     testpoint.setOrigin(testpoint.getLocalBounds().width / 2, testpoint.getLocalBounds().height / 2);
     testpoint.setPosition(Player.getPosition());
+    Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2, Crosshair.getLocalBounds().height / 2);
     ambientlight.clear();
     if (menu_num != 5 && menu_num != 6) {
         window.clear();
     }
 
-    if (Norm_dir_vector.x >= 0)
+    if (floor(dir_vector.x) > 0)
     {
         Player.setScale(2, 2);
         Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
@@ -3086,6 +3148,8 @@ void Draw()
             case 1:
                 Enemies[i]->shape.setScale(-1, 1);
                 break;
+            case 2:
+                Enemies[i]->shape.setScale(2, 2);
             }
         }
         else
@@ -3098,6 +3162,8 @@ void Draw()
             case 1:
                 Enemies[i]->shape.setScale(1, 1);
                 break;
+            case 2:
+                Enemies[i]->shape.setScale(-2, 2);
             }
         }
         window.draw(Enemies[i]->shape);
@@ -3204,7 +3270,10 @@ void Draw()
     speedmachine.setScale(0.5, 0.5);
     reloadmachine.setScale(0.5, 0.5);
     UI();
-    window.draw(Crosshair);
+    if (menu_num == 0)
+    {
+        window.draw(Crosshair);
+    }
     if (menu_num != 5 && menu_num != 6)
     {
         window.display();
@@ -3451,6 +3520,8 @@ void buying_weapons()
         ReloadSound.play();
     }
 }
+
+//Menu Functions
 
 void game_openning_menu()
 {
