@@ -8,6 +8,8 @@
 #include "Candle/LightSource.hpp"
 #include "Candle/RadialLight.hpp"
 #include "Candle/LightingArea.hpp"
+#include <sstream>
+#include <iomanip>
 
 
 using namespace std;
@@ -20,15 +22,17 @@ int const speedmoney = 2000;
 int const reloadmoney = 2000;
 float speedmulti = 1;
 float reloadmulti = 1;
+int EnemiesKilledWithoutHit = 0;
 
 int current_level = 0;
 
 //buying weapon
 bool  smg_buy = false, shotgun_buy = false, sniper_buy = false, rocket_buy = false, speed_pow = false, reload_pow = false;
-int const  money_smg = 1000, money_shotgun = 1500, money_sniper = 2000;
+int const  money_smg = 1000, money_shotgun = 1500, money_sniper = 2000, money_rocket = 5000;
 //to cheak player intersects
 bool smg_player_intersects = false, sniper_player_intersects = false;
 bool shotgun_player_intersects = false;
+bool rocket_player_intersects = false;
 
 #define pi 3.14159265
 #define Level1NumWaves 3
@@ -44,7 +48,7 @@ int pistolammostock = 36;
 int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.08f
-#define rifledamage 4.5
+#define rifledamage 6.6
 #define riflespread 0
 #define riflebulletpershot 1
 #define rifleclipsize 30
@@ -54,7 +58,7 @@ int rifleammostock = 90;
 int riflebulletsloaded = rifleclipsize;
 
 #define shotgunfirerate 1
-#define shotgundamage 1.5
+#define shotgundamage 5
 #define shotgunspread 1
 #define shotgunbulletpershot 10
 #define shotgunclipsize 8
@@ -64,7 +68,7 @@ int shotgunammostock = 24;
 int shotgunbulletsloaded = shotgunclipsize;
 
 #define sniperfirerate 1.6f
-#define sniperdamage 250
+#define sniperdamage 150
 #define sniperspread 0
 #define sniperbulletpershot 1
 #define sniperclipsize 5
@@ -84,7 +88,7 @@ int minigunammostock = 99999999;
 int minigunbulletsloaded = minigunclipsize;
 
 #define rocketfirerate 2
-#define rocketdamage 300
+#define rocketdamage 500
 #define rocketspread 0
 #define rocketbulletpershot 1
 #define rocketclipsize 1
@@ -135,6 +139,7 @@ struct bullet
 {
     Sprite shape;
     Sprite effect;
+    CircleShape explosionArea;
     Vector2f currentvelocity;
     float maxvelocity = 5000.0f;
     float damage;
@@ -149,18 +154,27 @@ struct bullet
     bool isRocket = false;
     bool DrawEffect = false;
     bool deleteme = false;
-    void animation(float dt,Texture SpawnEffectanimation[],Vector2f playerpos)
+    void animation(float dt,Texture SpawnEffectanimation[],Vector2f playerpos,bool slowing)
     {
+        explosionArea.setRadius(rocket_radius);
+        explosionArea.setFillColor(Color(180, 0, 0, 16));
+        explosionArea.setOrigin(explosionArea.getLocalBounds().width / 2, explosionArea.getLocalBounds().height / 2);
+        explosionArea.setPosition(shape.getPosition());
         guntrail.addTrailSegment(shape.getPosition());
         if (curr_gun_state == Shotgun || curr_gun_state == MiniGun)
         {
             lighteffect.setIntensity(500);
-            lighteffect.setRange(200);
+            lighteffect.setRange(100);
         }
         else
         {
             lighteffect.setIntensity(200);
-            lighteffect.setRange(200);
+            lighteffect.setRange(100);
+        }
+        if (slowing)
+        {
+            lighteffect.setIntensity(1000);
+            lighteffect.setRange(10);
         }
         lighteffect.setColor(Color::Yellow);
         lighteffect.setPosition(shape.getPosition());
@@ -191,6 +205,7 @@ struct Enemy
 {
     Sprite shape;
     Sprite SpawnEffect;
+    CircleShape explosionArea;
     RadialLight SpawnLight;
     Vector2f currentvelocity;
     int last_hit_bullet_id = -1;
@@ -202,7 +217,7 @@ struct Enemy
     float Spawn_animation_counter = 0;
     float Spawn_animation_duration = 0.15f;
     int Spawn_imagecounter = 0;
-    int health = 75;
+    int health = 100;
     Vector2f norm_Direction;
     virtual void EnemyBehaviour(Texture hit_anim[], Texture atk_anim[], Texture walk_anim[], Texture death_anim[], bool dashing, float dt, Vector2f player_pos) {}
     void SetSpawnLocation()
@@ -262,7 +277,9 @@ struct Zombie : public Enemy
 
 
     float distance_from_player;
+    float attackdistance = 75.0f;
     bool atkready = false;
+    bool isattacking = false;
     float damage = 10;
 
     int maxwalkframes = 8;
@@ -292,30 +309,28 @@ struct Zombie : public Enemy
             {
                 animation_counter = 0;
                 imagecounter++;
+                atkready = false;
                 if (imagecounter >= maxwalkframes)
                 {
+                    if (isattacking)
+                    {
+                        atkready = true;
+                    }
                     imagecounter = 0;
-                }
-            }
-            if (!atkready)
-            {
-                fire_rate_counter += dt;
-                if (fire_rate_counter >= attack_fire_rate)
-                {
-                    atkready = true;
-                    fire_rate_counter = 0;
                 }
             }
             Vector2f Direction = player_pos - shape.getPosition();
             float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
             norm_Direction = Direction / magnitude;
             distance_from_player = magnitude;
-            if (distance_from_player <= 75.0f)
+            if (distance_from_player <= attackdistance)
             {
+                isattacking = true;
                 shape.setTexture(atk_anim[imagecounter]);
                 if (atkready && !dashing)
                 {
                     Player_Health -= damage;
+                    EnemiesKilledWithoutHit = 0;
                     ishit = true;
                     atkready = false;
                 }
@@ -402,11 +417,17 @@ void SpawnBlood(Enemy& enemy)
 {
     BloodEffect newbloodeffect;
     newbloodeffect.BloodShape.setPosition(enemy.shape.getPosition());
-    newbloodeffect.BloodShape.setScale(enemy.shape.getScale().x * -0.5f, enemy.shape.getScale().y * 0.5f);
+    switch (enemy.type)
+    {
+    case 0:
+    case 1:newbloodeffect.BloodShape.setScale(enemy.shape.getScale().x * -0.5f, enemy.shape.getScale().y * 0.5f); break;
+    case 2:newbloodeffect.BloodShape.setScale(enemy.shape.getScale().x * -1.0f, enemy.shape.getScale().y * 1.0f); break;
+    }
     newbloodeffect.assign_random_number();
     bloodeffects.push_back(newbloodeffect);
     if (enemy.health <= 0)
     {
+        EnemiesKilledWithoutHit++;
         int random_num = rand() % 100;
         enemy.isdeath = true;
         if (random_num > 70 && random_num < 81)
@@ -424,13 +445,16 @@ void SpawnBlood(Enemy& enemy)
             newammostock.setPosition(enemy.shape.getPosition());
             AmmoPacks.push_back(newammostock);
         }
-        Score += 10;
-        Money += 75;
+        switch (enemy.type)
+        {
+        case 0:Score += 25 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10) ); Money += 50; break;
+        case 1:Score += 50 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 75; break;
+        case 2:Score += 100 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 150; break;
+        }
     }
 }
 struct Explosion
 {
-    float radius = 70;
     int expo_image_counter = 0;
     float expo_animation_counter = 0;
     float expo_animation_switch_time = 0.015;
@@ -454,7 +478,7 @@ struct Explosion
             deleteme = true;
         }
     }
-    void explosionlogic(Vector2f Expo_Pos, Vector2f Player_pos)
+    void explosionlogic(Vector2f Expo_Pos, Vector2f Player_pos,float damage)
     {
         ExplosionSound.setBuffer(Rocket_Explosion_Sound);
         ExplosionSound.play();
@@ -465,7 +489,7 @@ struct Explosion
             if (distance <= rocket_radius)
             {
                 Enemies[k]->currentvelocity = -Vector2f(Enemies[k]->currentvelocity.x + 100, Enemies[k]->currentvelocity.y + 100);
-                Enemies[k]->health -= rocketdamage * (15 / distance);
+                Enemies[k]->health -= damage * (15 / distance);
                 SpawnBlood(*Enemies[k]);
             }
         }
@@ -473,6 +497,7 @@ struct Explosion
         if (distance <= rocket_radius)
         {
             Player_Health -= rocketdamage * 0.05;
+            EnemiesKilledWithoutHit = 0;
         }
     }
 };
@@ -480,14 +505,24 @@ vector<Explosion> explosions;
 struct SkullFire : public Enemy
 {
     float animation_counter = 0;
+    float atkreadycounter = 0;
     float animation_duration = 0.20f;
     int imagecounter = 0;
     float distance_from_player;
+    bool atkready = false;
     void EnemyBehaviour(Texture hit_anim[], Texture atk_anim[], Texture walk_anim[], Texture death_anim[], bool dashing, float dt, Vector2f player_pos) override
     {
         if (!isdeath)
-        {
+        {          
             animation_counter += dt;
+            if (atkreadycounter < 2)
+            {
+                atkreadycounter += dt;
+            }
+            else
+            {
+                atkready = true;
+            }
             if (animation_counter >= animation_duration)
             {
                 animation_counter = 0;
@@ -511,7 +546,7 @@ struct SkullFire : public Enemy
                 currentvelocity = Vector2f(currentvelocity.x += -(currentvelocity.x / abs(currentvelocity.x)) * dt * 500, currentvelocity.y += -(currentvelocity.y / abs(currentvelocity.y)) * dt * 500);
             }
             shape.move(Vector2f(currentvelocity.x * norm_Direction.x * dt, currentvelocity.y * norm_Direction.y * dt));
-            if (magnitude <= 75)
+            if (magnitude <= 75 &&atkready)
             {
                 isdeath = true;
             }
@@ -519,8 +554,9 @@ struct SkullFire : public Enemy
         else if (isdeath)
         {
             Explosion newexplosion;
-            newexplosion.explosionlogic(shape.getPosition(), player_pos);
+            newexplosion.explosionlogic(shape.getPosition(), player_pos,250);
             explosions.push_back(newexplosion);
+            EnemiesKilledWithoutHit--;
             remove_Enemy = true;
         }
     }
@@ -597,15 +633,14 @@ void block2();
 
 void background3();
 void wall3();
-void block3();
 
 void Draw(); // the main drawing function where everything gets drawn on screen
-
+void Combo();
+void WeaponsBuyDrawing();
 void UI();
 
 //menu
 void game_openning_menu();
-void Start();
 void Credits(Font font);
 void Exit();
 void Pause();
@@ -679,6 +714,7 @@ Text ammo_stock_text;
 Text money_smg_text;
 Text money_sniper_text;
 Text money_shotgun_text;
+Text money_Rocket_text;
 Text speedmachine_text;
 Text reloadmachine_text;
 Text Gun_controls;
@@ -696,12 +732,8 @@ Sprite pistol_buying;
 Sprite smg_buying;
 Sprite shotgun_buying;
 Sprite sniper_buying;
-Sprite full_heart;
+Sprite Rocket_buying;
 Sprite money;
-Sprite ammo_shotgun;
-Sprite ammo_pistol;
-Sprite ammo_smg;
-Sprite ammo_box;
 Sprite speedmachine;
 Sprite reloadmachine;
 Sprite Crosshair;
@@ -766,6 +798,9 @@ bool iscamerashake = false;
 bool delayfinished = false;
 
 bool SpawnedAZombie = false;
+
+bool isComboAnimation = false;
+bool Isincreasing = true;
 //wall bounds vector to detect collision
 vector <FloatRect> Wall_Bounds;
 vector <FloatRect> Wall_Bounds1;
@@ -823,10 +858,7 @@ Texture pistol_photo;
 Texture smg_photo;
 Texture shotgun_photo;
 Texture sniper_photo;
-Texture full_heart_photo;
 Texture money_photo;
-Texture ammo_shotgun_photo;
-Texture ammo_pistol_photo;
 Texture speedmachine_photo;
 Texture reloadmachine_photo;
 
@@ -866,12 +898,14 @@ float slow_counter = 0;
 float slow_multi = 1;
 float minigun_counter = 0;
 float knockbackmag = 0;
+float Combo_timer_counter = 0;
 //firerate counter
 float fire_rate_counter;
+int previouskilledenemiescombo;
 //player speed and direction(x,y)
-Vector2f KnockDir;
-float KnockMag = 0;
 Vector2f MovementDirection(0, 0);
+//combo stuff
+int ComboIncrease = 0;
 
 //current gun attributes
 int* current_ammo = &pistolbulletsloaded; // ui
@@ -919,7 +953,11 @@ Sound ShootSound;
 SoundBuffer* Current_shoot_Buffer;
 SoundBuffer* Current_reload_Buffer;
 
-SoundBuffer music[3];
+SoundBuffer GameOver_buffer;
+SoundBuffer Combo_buffer;
+Sound EffectsPlayer;
+
+SoundBuffer music[4];
 Sound MusicPlayer;
 bool music_trigger = false;
 
@@ -950,6 +988,8 @@ Sprite control;
 
 Texture HealthBarTexture;
 Sprite HealthBarOverlay;
+
+ostringstream ss;
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
 
 LightingArea ambientlight(candle::LightingArea::FOG,Vector2f(0,0),Vector2f(1920, 1080));
@@ -973,6 +1013,11 @@ int main()
     view.zoom(0.65);
 
     SwtichCurrentWallBounds();
+    ifstream inf("savegame.txt");
+    inf >> highest_score;
+    inf.close();   
+    MusicPlayer.setBuffer(music[3]);
+    MusicPlayer.play();
     while (window.isOpen()) {
         float elapsed = clock.restart().asSeconds();
         playerdeltatime = elapsed;
@@ -1100,7 +1145,6 @@ void GetTextures()
     {
         zombie_death_animation[i].loadFromFile("Zombies Animation/Death/tile" + std::to_string(i) + ".png");
     }
-    //fasel
     for (int i = 0; i < 8; i++)
     {
         Golem_walk_animation[i].loadFromFile("GolemAnimation/walk/tile (" + std::to_string(i+1) + ").png");
@@ -1117,7 +1161,6 @@ void GetTextures()
     {
         Golem_hit_animation[i].loadFromFile("GolemAnimation/hit/tile (" + std::to_string(i+1) + ").png");
     }
-    //fasel
     for (int i = 0; i < 7; i++)
     {
         Zombie_spawn_animation[i].loadFromFile("FX/ZombieSpawnEffect/frame" + std::to_string(i) + ".png");
@@ -1144,6 +1187,8 @@ void GetTextures()
     }
     MiniGun_Image.loadFromFile("minigun.png");
     RocketLauncher_Image.loadFromFile("RocketLauncher.png");
+    Rocket_buying.setTexture(RocketLauncher_Image);
+    Rocket_buying.setScale(4, 4);
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
     Crosshair.setScale(0.3, 0.3);
@@ -1155,14 +1200,12 @@ void GetTextures()
     reloadmachine.setTexture(reloadmachine_photo);
     //ui
     normal_font.loadFromFile("Okami.otf");
-    ammo_shotgun_photo.loadFromFile("ammo_shotgun.png");
     ammo_smg_photo.loadFromFile("ammo_smg.png");
-    ammo_pistol_photo.loadFromFile("ammo_pistol.png");
-    full_heart_photo.loadFromFile("full_heart.png");
     money_photo.loadFromFile("money.png");
     pistol_photo.loadFromFile("pistol.png");
     smg_photo.loadFromFile("smg.png");
     shotgun_photo.loadFromFile("shotgun.png");
+    shotgun_buying.setTexture(shotgun_photo);
     sniper_photo.loadFromFile("sniper.png");
     sniper_buying.setTexture(sniper_photo);
     Void.loadFromFile("void.jpg");
@@ -1196,6 +1239,9 @@ void GetTextures()
     Rocket_Reload_Sound.loadFromFile("RocketReloadSound.wav");
     Rocket_Explosion_Sound.loadFromFile("RocketExplosionSound.wav");
 
+    //GameOver_buffer.loadFromFile("GameOversoundeffect.wav");
+    Combo_buffer.loadFromFile("PowerChord.wav");
+
     SpeedCola_T.loadFromFile("SpeedCola.png");
     StaminaUp_T.loadFromFile("StaminUp.png");
 
@@ -1212,7 +1258,8 @@ void GetTextures()
 
     /*music[0].loadFromFile("Sad But True (Remastered).wav");
     music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    music[2].loadFromFile("Metallica Shadows Follow.wav");*/
+    music[2].loadFromFile("Metallica Shadows Follow.wav");
+    music[3].loadFromFile("MainMenuMusic.wav");*/
 
 
     Vector2f scalefactor = Vector2f(0.2, 0.2);
@@ -1273,9 +1320,10 @@ void Update(float dt)
         Vector2i pixelpos = Mouse::getPosition(window);
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
-
-       // MusicHandler();
-
+        if (menu_num == 0)
+        {
+            MusicHandler();
+        }
         Player_Movement();
         Player_Collision();
 
@@ -1332,7 +1380,7 @@ void MusicHandler()
     {
         music_trigger = false;
         current_song++;
-        if (current_song >= 3)
+        if (current_song > 3)
         {
             current_song = 0;
         }
@@ -1398,22 +1446,22 @@ void Player_Collision()
             {
                 if (Player_Bounds.left < Wall_bound.left)
                 {
-                    Player.move(-175 * speedmulti * playerdeltatime, 0);
+                    Player.move(-(MovementDirection.x / abs(MovementDirection.x)) * MovementDirection.x * playerdeltatime, 0);
                 }
                 else
                 {
-                    Player.move(175 * speedmulti * playerdeltatime, 0);
+                    Player.move(-(MovementDirection.x / abs(MovementDirection.x)) * -MovementDirection.x * playerdeltatime, 0);
                 }
             }
             else
             {
                 if (Player_Bounds.top < Wall_bound.top)
                 {
-                    Player.move(0, -175 * speedmulti * playerdeltatime);
+                    Player.move(0, -(MovementDirection.y / abs(MovementDirection.y)) * MovementDirection.y * playerdeltatime);
                 }
                 else
                 {
-                    Player.move(0, 175 * speedmulti * playerdeltatime);
+                    Player.move(0, -(MovementDirection.y / abs(MovementDirection.y)) * -MovementDirection.y * playerdeltatime);
                 }
             }
         }
@@ -1440,6 +1488,7 @@ void Player_Collision()
             rifleammostock += 30;
             shotgunammostock += 4;
             sniperammostock += 10;
+            rocketammostock += 2;
             AmmoPacks.erase(AmmoPacks.begin() + i);
         }
     }
@@ -1461,6 +1510,13 @@ void Player_Collision()
     }
     else
         shotgun_player_intersects = false;
+    if (Player.getGlobalBounds().intersects(Rocket_buying.getGlobalBounds()))
+    {
+        rocket_player_intersects = true;
+    }
+    else
+        rocket_player_intersects = false;
+
     //vandingmachine
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()) && Money >= speedmoney && speed_pow == false && Keyboard::isKeyPressed(Keyboard::Key::E)) {
         speedmulti = 2;
@@ -1482,11 +1538,17 @@ void Player_Collision()
         speed_pow = false;
         reload_pow = false;
         sniper_buy = false;
+        rocket_buy = false;
         speedmulti = 1;
         reloadmulti = 1;
         Money = 0;
-        Wall_Bounds.clear();
         HealthPacks.clear();
+        AmmoPacks.clear();
+        explosions.clear();
+        muzzleEffects.clear();
+        bloodeffects.clear();
+        Enemies.clear();
+        bullets.clear();
         Curr_Gun_state = Pistol;
         SwtichCurrentWallBounds();
         Current_Wave1 = 0;
@@ -1494,6 +1556,12 @@ void Player_Collision()
         riflebulletsloaded = 30;
         shotgunbulletsloaded = 8;
         sniperbulletsloaded = 5;
+        rocketbulletsloaded = 1;
+
+        rifleammostock = 60;
+        shotgunammostock = 8;
+        sniperammostock = 5;
+        rocketammostock = 2;
     }
 }
 void Switch_States()
@@ -1512,6 +1580,11 @@ void Switch_States()
         if (highest_score < Score)
         {
             highest_score = Score;
+        }
+        if (curr_state!= death)
+        {
+            EffectsPlayer.setBuffer(GameOver_buffer);
+            EffectsPlayer.play();
         }
         curr_state = state::death;
     }
@@ -2014,7 +2087,7 @@ void Bullet_Movement_Collision(float dt)
     for (int i = 0; i < bullets.size(); i++)
     {
         bullets[i].shape.move(bullets[i].currentvelocity * dt);
-        bullets[i].animation(playerdeltatime, RocketSpawnAnimation,Player.getPosition());
+        bullets[i].animation(playerdeltatime, RocketSpawnAnimation,Player.getPosition(),isSlowing);
         for (int k = 0; k < Wall_Bounds.size(); k++)
         {
             if (bullets[i].shape.getGlobalBounds().intersects(Wall_Bounds[k]))
@@ -2022,7 +2095,7 @@ void Bullet_Movement_Collision(float dt)
                 if (bullets[i].isRocket)
                 {
                     Explosion newexplosion;
-                    newexplosion.explosionlogic(bullets[i].shape.getPosition(), Player.getPosition());
+                    newexplosion.explosionlogic(bullets[i].shape.getPosition(), Player.getPosition(),rocketdamage);
                     explosions.push_back(newexplosion);
                 }
                 bullets[i].deleteme = true;
@@ -2040,7 +2113,7 @@ void Bullet_Movement_Collision(float dt)
                 if (bullets[i].isRocket)
                 {    
                     Explosion newexplosion;
-                    newexplosion.explosionlogic(bullets[i].shape.getPosition(), Player.getPosition());
+                    newexplosion.explosionlogic(bullets[i].shape.getPosition(), Player.getPosition(),rocketdamage);
                     explosions.push_back(newexplosion);
                 }
                 else
@@ -2245,30 +2318,30 @@ void SpawnZombiesWaves(float dt)
     if (canspawn && SpawningZombieCounter >= 1)
     {
         int randomthing = 1 + rand() % 10;
-        if (randomthing <= 5)
+        if (randomthing <= 6)
         {
             auto newzombie = make_unique<Zombie>();
             newzombie->type = 0;
             newzombie->shape.setPosition(50 + rand() % 1770, 50 + rand() % 930);
             newzombie->damage *= multiplier;
-            newzombie->attack_fire_rate *= (1 / multiplier);
+            newzombie->health *= multiplier;
             newzombie->maxvelocity *= multiplier;
             newzombie->SetSpawnLocation();
             Enemies.push_back(move(newzombie));
         }
-        else if (randomthing > 5 &&randomthing < 7)
+        else if (randomthing > 6 &&randomthing < 8)
         {
             auto newzombie = make_unique<Zombie>();
             newzombie->type = 2;
             newzombie->shape.setPosition(150 + rand() % 1770, 150 + rand() % 930);
             newzombie->damage *= multiplier * 8;
-            newzombie->attack_fire_rate *= (1 / multiplier) * 2;
             newzombie->animation_duration *= 3;
             newzombie->Death_animation_duration /= 2;
             newzombie->maxwalkframes = 8;
             newzombie->maxhitframes = 4;
             newzombie->maxdeathframes = 8;
             newzombie->health *= 10;
+            newzombie->attackdistance *= 2;
             newzombie->shape.setTexture(Golem_atk_animation[2]);
             newzombie->maxvelocity *= multiplier / 2;
             newzombie->SetSpawnLocation();
@@ -2278,6 +2351,7 @@ void SpawnZombiesWaves(float dt)
         {
             auto newskull = make_unique<SkullFire>();
             newskull->type = 1;
+            newskull->health *= multiplier;
             newskull->shape.setPosition(50 + rand() % 1770, 50 + rand() % 930);
             newskull->maxvelocity *= multiplier;
             newskull->SetSpawnLocation();
@@ -2286,7 +2360,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 35 * Current_Wave1)
+    if (TotalSpawnedZombies >= 1 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -2359,22 +2433,22 @@ void HandleZombieBehaviour(float dt)
                 {
                     if (current_zombie_Bound.left < Wall_bound.left)
                     {
-                        Enemies[i]->shape.move(-Enemies[i]->maxvelocity * dt, 0);
+                        Enemies[i]->shape.move((- (Enemies[i]->currentvelocity.x / abs(Enemies[i]->currentvelocity.x)) * Enemies[i]->currentvelocity.x - 150)* dt, 0);
                     }
                     else
                     {
-                        Enemies[i]->shape.move(Enemies[i]->maxvelocity * dt, 0);
+                        Enemies[i]->shape.move( (-(Enemies[i]->currentvelocity.x / abs(Enemies[i]->currentvelocity.x)) * -Enemies[i]->currentvelocity.x + 150)* dt, 0);
                     }
                 }
                 else
                 {
                     if (current_zombie_Bound.top < Wall_bound.top)
                     {
-                        Enemies[i]->shape.move(0, -Enemies[i]->maxvelocity * dt);
+                        Enemies[i]->shape.move(0, ( - (Enemies[i]->currentvelocity.y / abs(Enemies[i]->currentvelocity.y)) * Enemies[i]->currentvelocity.y-150) * dt);
                     }
                     else
                     {
-                        Enemies[i]->shape.move(0, Enemies[i]->maxvelocity * dt);
+                        Enemies[i]->shape.move(0, ( - (Enemies[i]->currentvelocity.y / abs(Enemies[i]->currentvelocity.y)) * -Enemies[i]->currentvelocity.y + 150)* dt);
                     }
                 }
             }
@@ -2422,6 +2496,7 @@ void HandleZombieBehaviour(float dt)
 
 void SwtichCurrentWallBounds()
 {
+    Wall_Bounds.clear();
     switch (current_level)
     {
     case 1:
@@ -2752,7 +2827,6 @@ void Draw()
         Portal_S.setPosition(580, 790);
         speedmachine.setPosition(Vector2f(200, 25));
         reloadmachine.setPosition(Vector2f(1080, 580)); 
-        smg_buying.setPosition(Vector2f(860, 415)); 
         for (int i = 0; i < 10; i++)
         {
             for (int j = 0; j < 7; j++)
@@ -2760,8 +2834,10 @@ void Draw()
                 window.draw(background1[j][i]);
             }
         }
-        shotgun_buying.setPosition(Vector2f(1700, 790));
-        sniper_buying.setPosition(Vector2f(500, 700));
+        smg_buying.setPosition(Vector2f(480, 270));
+        shotgun_buying.setPosition(Vector2f(1440, 270));
+        sniper_buying.setPosition(Vector2f(1440, 810));
+        Rocket_buying.setPosition(Vector2f(480, 810));
         //upper wall
 
         for (int i = 0; i < 5; i++)
@@ -3110,7 +3186,6 @@ void Draw()
         }
         break;
     }
-   //window.draw(test);
     for (int i = 0; i < 4; i++)
     {
         window.draw(void1[i]);
@@ -3127,6 +3202,7 @@ void Draw()
         bloodeffects[i].BloodShape.setOrigin(bloodeffects[i].BloodShape.getLocalBounds().width / 2, bloodeffects[i].BloodShape.getLocalBounds().height / 2);
         window.draw(bloodeffects[i].BloodShape);
     }
+    WeaponsBuyDrawing();
     window.draw(Player);
     for (int i = 0; i < Enemies.size(); i++)
     {
@@ -3138,6 +3214,21 @@ void Draw()
             ambientlight.draw(Enemies[i]->SpawnLight);
         }
         Enemies[i]->shape.setOrigin(Enemies[i]->shape.getLocalBounds().width / 2, Enemies[i]->shape.getLocalBounds().height / 2);
+        if (Enemies[i] -> type == 1)
+        {
+            Enemies[i]->explosionArea.setRadius(75);
+            Enemies[i]->explosionArea.setFillColor(Color(180, 0, 0, 16));
+            Enemies[i]->explosionArea.setOrigin(Enemies[i]->explosionArea.getLocalBounds().width / 2, Enemies[i]->explosionArea.getLocalBounds().height / 2);
+            Enemies[i]->explosionArea.setPosition(Enemies[i]->shape.getPosition());
+
+            window.draw(Enemies[i]->explosionArea);
+
+            Enemies[i]->explosionArea.setFillColor(Color(180, 0, 0, 8));
+            Enemies[i]->explosionArea.setRadius(rocket_radius);
+            Enemies[i]->explosionArea.setOrigin(Enemies[i]->explosionArea.getLocalBounds().width / 2, Enemies[i]->explosionArea.getLocalBounds().height / 2);
+            Enemies[i]->explosionArea.setPosition(Enemies[i]->shape.getPosition());
+            window.draw(Enemies[i]->explosionArea);
+        }
         if(Enemies[i]->norm_Direction.x < 0)
         {
             switch (Enemies[i]->type)
@@ -3174,10 +3265,21 @@ void Draw()
         bullets[i].effect.setOrigin(bullets[i].effect.getLocalBounds().width / 2, bullets[i].effect.getLocalBounds().height / 2);
         window.draw(bullets[i].lighteffect);
         bullets[i].guntrail.drawTrail(window);
-        if (isSlowing || bullets[i].isRocket) { window.draw(bullets[i].shape); }
+        if (bullets[i].isRocket)
+        {
+            if (isSlowing)
+            {
+                window.draw(bullets[i].shape);
+            }
+            window.draw(bullets[i].explosionArea);
+        }      
         if (bullets[i].DrawEffect)
         {
             window.draw(bullets[i].effect);
+        }
+        if (isSlowing)
+        {
+            window.draw(bullets[i].shape);
         }
         ambientlight.draw(bullets[i].lighteffect);
     }
@@ -3229,7 +3331,7 @@ void Draw()
         break;
     case MiniGun:
         MiniGun_S.setOrigin(MiniGun_S.getLocalBounds().width / 4, MiniGun_S.getLocalBounds().height / 2);
-        test.setPosition(MiniGun_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 10, MiniGun_S.getPosition().y + sin(Gun.getRotation() / 180 * pi) * 50);
+        test.setPosition(MiniGun_S.getPosition().x + cos(Gun.getRotation() / 180 * pi) * 70, MiniGun_S.getPosition().y - 5 + sin(Gun.getRotation() / 180 * pi) * 70);
         MiniGun_S.setScale(Gun.getScale().x * 4, Gun.getScale().y * 4);
         MiniGun_S.setPosition(Gun.getPosition());
         MiniGun_S.setRotation(Gun.getRotation());
@@ -3270,6 +3372,7 @@ void Draw()
     speedmachine.setScale(0.5, 0.5);
     reloadmachine.setScale(0.5, 0.5);
     UI();
+    Combo();
     if (menu_num == 0)
     {
         window.draw(Crosshair);
@@ -3280,7 +3383,7 @@ void Draw()
     }
     ambientlight.display();
 }
-void UI()
+void WeaponsBuyDrawing()
 {
     RadialLight light;
     light.setRange(100);
@@ -3290,51 +3393,65 @@ void UI()
     //smg price text 
     money_smg_text.setFont(normal_font);
     money_smg_text.setString("$" + to_string(money_smg));
-    money_smg_text.setCharacterSize(9);
+    money_smg_text.setCharacterSize(16);
     money_smg_text.setFillColor(Color::White);
-    money_smg_text.setPosition(smg_buying.getPosition().x + 20, smg_buying.getPosition().y);
+    money_smg_text.setOrigin(money_smg_text.getLocalBounds().width / 2, money_smg_text.getLocalBounds().height / 2);
+    money_smg_text.setPosition(smg_buying.getPosition().x - 20, smg_buying.getPosition().y - 25);
     if (smg_player_intersects && !smg_buy)
         window.draw(money_smg_text);
     //sniper price text 
     money_sniper_text.setFont(normal_font);
     money_sniper_text.setString("$" + to_string(money_sniper));
-    money_sniper_text.setCharacterSize(9);
+    money_sniper_text.setCharacterSize(16);
     money_sniper_text.setFillColor(Color::White);
-    money_sniper_text.setPosition(sniper_buying.getPosition().x + 20, sniper_buying.getPosition().y);
+    money_sniper_text.setOrigin(money_sniper_text.getLocalBounds().width / 2, money_sniper_text.getLocalBounds().height / 2);
+
+    money_sniper_text.setPosition(sniper_buying.getPosition().x, sniper_buying.getPosition().y - 25);
     if (sniper_player_intersects && !sniper_buy)
         window.draw(money_sniper_text);
     //shotgun price text 
     money_shotgun_text.setFont(normal_font);
     money_shotgun_text.setString("$" + to_string(money_shotgun));
-    money_shotgun_text.setCharacterSize(9);
+    money_shotgun_text.setCharacterSize(16);
     money_shotgun_text.setFillColor(Color::White);
-    money_shotgun_text.setPosition(shotgun_buying.getPosition().x + 20, shotgun_buying.getPosition().y);
+    money_shotgun_text.setOrigin(money_shotgun_text.getLocalBounds().width / 2, money_shotgun_text.getLocalBounds().height / 2);
+
+    money_shotgun_text.setPosition(shotgun_buying.getPosition().x - 20, shotgun_buying.getPosition().y - 20);
     if (shotgun_player_intersects && !shotgun_buy)
         window.draw(money_shotgun_text);
+    //Rocket price text
+    money_Rocket_text.setFont(normal_font);
+    money_Rocket_text.setString("$" + to_string(money_rocket));
+    money_Rocket_text.setCharacterSize(16);
+    money_Rocket_text.setFillColor(Color::White);
+    money_Rocket_text.setOrigin(money_Rocket_text.getLocalBounds().width / 2, money_Rocket_text.getLocalBounds().height / 2);
+
+    money_Rocket_text.setPosition(Rocket_buying.getPosition().x, Rocket_buying.getPosition().y - 25);
+    if (rocket_player_intersects && !rocket_buy)
+        window.draw(money_Rocket_text);
     //speedmachine price text 
     speedmachine_text.setFont(normal_font);
     speedmachine_text.setString("$" + to_string(speedmoney));
-    speedmachine_text.setCharacterSize(9);
+    speedmachine_text.setCharacterSize(16);
     speedmachine_text.setFillColor(Color::White);
-    speedmachine_text.setPosition(speedmachine.getPosition().x + 20, speedmachine.getPosition().y - 12);
+    speedmachine_text.setPosition(speedmachine.getPosition().x + 20, speedmachine.getPosition().y - 25);
     if (Player.getGlobalBounds().intersects(speedmachine.getGlobalBounds()))
         window.draw(speedmachine_text);
     //
     reloadmachine_text.setFont(normal_font);
     reloadmachine_text.setString("$" + to_string(reloadmoney));
-    reloadmachine_text.setCharacterSize(9);
+    reloadmachine_text.setCharacterSize(16);
     reloadmachine_text.setFillColor(Color::White);
-    reloadmachine_text.setPosition(reloadmachine.getPosition().x + 20, reloadmachine.getPosition().y - 12);
+    reloadmachine_text.setPosition(reloadmachine.getPosition().x + 20, reloadmachine.getPosition().y - 25);
     if (Player.getGlobalBounds().intersects(reloadmachine.getGlobalBounds()))
         window.draw(reloadmachine_text);
-    /* {end drawing ui }
-     to draw guns
-     */
 
     if (!sniper_buy)
     {
+        sniper_buying.setOrigin(sniper_buying.getLocalBounds().width / 2, sniper_buying.getLocalBounds().height / 2);
+
         window.draw(sniper_buying);
-        light.setPosition(sniper_buying.getPosition().x + sniper_buying.getLocalBounds().width / 2, sniper_buying.getPosition().y + sniper_buying.getLocalBounds().height / 2);
+        light.setPosition(sniper_buying.getPosition().x, sniper_buying.getPosition().y );
         window.draw(light);
         ambientlight.draw(light);
     }
@@ -3344,21 +3461,87 @@ void UI()
 
     if (!smg_buy)
     {
+        smg_buying.setOrigin(smg_buying.getLocalBounds().width / 2, smg_buying.getLocalBounds().height / 2);
         window.draw(smg_buying);
-        light.setPosition(smg_buying.getPosition().x + smg_buying.getLocalBounds().width / 2, smg_buying.getPosition().y + smg_buying.getLocalBounds().height / 2);
+        light.setPosition(smg_buying.getPosition().x , smg_buying.getPosition().y );
         window.draw(light);
         ambientlight.draw(light);
     }
     // shotgun 
-    shotgun_buying.setTexture(shotgun_photo);
 
     if (!shotgun_buy)
     {
+        shotgun_buying.setOrigin(shotgun_buying.getLocalBounds().width / 2, shotgun_buying.getLocalBounds().height / 2);
+
         window.draw(shotgun_buying);
-        light.setPosition(shotgun_buying.getPosition().x + shotgun_buying.getLocalBounds().width / 2, shotgun_buying.getPosition().y + shotgun_buying.getLocalBounds().height / 2);
+        light.setPosition(shotgun_buying.getPosition().x, shotgun_buying.getPosition().y );
         window.draw(light);
         ambientlight.draw(light);
     }
+    if (!rocket_buy)
+    {
+        Rocket_buying.setOrigin(Rocket_buying.getLocalBounds().width / 2, Rocket_buying.getLocalBounds().height / 2);
+
+        window.draw(Rocket_buying);
+        light.setPosition(Rocket_buying.getPosition().x , Rocket_buying.getPosition().y );
+        window.draw(light);
+        ambientlight.draw(light);
+    }
+}
+void Combo()
+{
+    Text EnemiesKilledText;
+    Text ComboText;
+    EnemiesKilledText.setFont(normal_font);
+    ostringstream ss;
+    EnemiesKilledText.setString(to_string(EnemiesKilledWithoutHit));
+    EnemiesKilledText.setCharacterSize(72);
+    EnemiesKilledText.setFillColor(Color::White);
+    EnemiesKilledText.setOrigin(EnemiesKilledText.getLocalBounds().width / 2, EnemiesKilledText.getLocalBounds().height / 2);
+    EnemiesKilledText.setPosition(window.mapPixelToCoords(Vector2i(100, 270)));
+    
+
+    ComboText.setFont(normal_font);
+    ss << "Score x " << fixed << std::setprecision(1) << float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10);
+    string str = ss.str();
+    ComboText.setString(str);
+    ComboText.setCharacterSize(26);
+    ComboText.setFillColor(Color::White);
+    ComboText.setOrigin(ComboText.getLocalBounds().width / 2, ComboText.getLocalBounds().height / 2);
+    ComboText.setPosition(EnemiesKilledText.getPosition().x, EnemiesKilledText.getPosition().y + 50);
+    if (EnemiesKilledWithoutHit % 10 == 0 && EnemiesKilledWithoutHit != 0 && EnemiesKilledWithoutHit != previouskilledenemiescombo && !isComboAnimation)
+    {
+        previouskilledenemiescombo = EnemiesKilledWithoutHit;
+        isComboAnimation = true;
+        EffectsPlayer.setBuffer(Combo_buffer);
+        EffectsPlayer.play();
+    }
+    if (isComboAnimation)
+    {
+        Combo_timer_counter += playerdeltatime *4;
+        if (Combo_timer_counter <= 6)
+        {
+            if ((int)Combo_timer_counter % 2 == 0)
+            {
+                ComboText.setFillColor(Color(136, 8, 8));
+                EnemiesKilledText.setFillColor(Color(136, 8, 8));
+            }
+            else
+            {
+                ComboText.setFillColor(Color::White);
+                EnemiesKilledText.setFillColor(Color::White);
+            }
+        }
+        else
+        {
+            isComboAnimation = false;
+        }
+    }
+    window.draw(ComboText);
+    window.draw(EnemiesKilledText);
+}
+void UI()
+{
     RectangleShape health_bar(Vector2f(170, 15));
     health_bar.setScale(Vector2f((Player_Health / 100.0) * 2, 2));
     health_bar.setPosition(window.mapPixelToCoords(Vector2i(20, 1020)));
@@ -3492,6 +3675,7 @@ void UI()
     Gun_controls.setFillColor(Color::White);
     Gun_controls.setPosition(window.mapPixelToCoords(Vector2i(1400, 0)));
     window.draw(Gun_controls);
+
 }
 void buying_weapons()
 {
@@ -3499,7 +3683,7 @@ void buying_weapons()
     {
         Money -= money_smg;
         smg_buy = true;
-        Score += 100;
+        Score += 125;
         ReloadSound.setBuffer(rifle_pickup_sound);
         ReloadSound.play();
     }
@@ -3507,16 +3691,24 @@ void buying_weapons()
     {
         Money -= money_shotgun;
         shotgun_buy = true;
-        Score += 100;
+        Score += 250;
         ReloadSound.setBuffer(shotgun_pickup_Buffer);
         ReloadSound.play();
     }
-    if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()) && Money >= 2000 && !sniper_buy && Keyboard::isKeyPressed(Keyboard::E))
+    if (Player.getGlobalBounds().intersects(sniper_buying.getGlobalBounds()) && Money >= money_sniper && !sniper_buy && Keyboard::isKeyPressed(Keyboard::E))
     {
-        Money -= 2000;
+        Money -= money_sniper;
         sniper_buy = true;
-        Score += 100;
+        Score += 500;
         ReloadSound.setBuffer(sniper_pickup_Sound);
+        ReloadSound.play();
+    }
+    if (Player.getGlobalBounds().intersects(Rocket_buying.getGlobalBounds()) && Money >= money_rocket && !rocket_buy && Keyboard::isKeyPressed(Keyboard::E))
+    {
+        Money -= money_rocket;
+        rocket_buy = true;
+        Score += 1000;
+        ReloadSound.setBuffer(shotgun_pickup_Buffer);
         ReloadSound.play();
     }
 }
@@ -3532,28 +3724,31 @@ void game_openning_menu()
     {
         if (Mouse::isButtonPressed(Mouse::Left))
         {
-            current_level = 1;
-            Player.setPosition(500, 500);
+            current_level = 3;
+            SwtichCurrentWallBounds();
+            Player.setPosition(900, 300);
             Player_Health = 100;
             Score = 0;
             menu_num = 0;
-            Enemies.clear();
             TotalSpawnedZombies = 0;
             PortalOpen = false;
-            smg_buy = true;
-            shotgun_buy = true;
+            smg_buy = false;
+            shotgun_buy = false;
             speed_pow = false;
             reload_pow = false;
-            sniper_buy = true;
-            rocket_buy = true;
+            sniper_buy = false;
+            rocket_buy = false;
             speedmulti = 1;
             reloadmulti = 1;
-            Money = 100000;
-            Wall_Bounds.clear();
+            Money = 0;
             HealthPacks.clear();
             bloodeffects.clear();
+            Enemies.clear();
+            explosions.clear();
+            bullets.clear();
+            AmmoPacks.clear();
+            muzzleEffects.clear();
             Curr_Gun_state = Pistol;
-            SwtichCurrentWallBounds();
             Current_Wave1 = 0;
             MusicPlayer.stop();
             current_song = 0;
@@ -3562,7 +3757,13 @@ void game_openning_menu()
             riflebulletsloaded = 30;
             shotgunbulletsloaded = 8;
             sniperbulletsloaded = 5;
-            menu_num = 0;
+            rocketbulletsloaded = 1;
+            rifleammostock = 60;
+            shotgunammostock = 8;
+            sniperammostock = 5;
+            rocketammostock = 2;
+            MusicPlayer.stop();
+            music_trigger = false;
         }
         if (PlayButton.getScale().x < 0.3 && PlayButton.getScale().y < 0.3)
         {
@@ -3736,12 +3937,16 @@ void Pause()
     {
         if (Mouse::isButtonPressed(Mouse::Left))
         {
-            ofstream outf("savegame.txt");
-            outf << current_level << endl;
-            outf << Player_Health << endl;
-            outf << Score << endl;
-            outf.close();
+            if (Score > highest_score)
+            {
+                ofstream outf("savegame.txt");
+                outf << Score << endl;
+                outf.close();
+            }
             menu_num = 1;
+            MusicPlayer.setBuffer(music[3]);
+            MusicPlayer.play();
+            music_trigger = false;
         }
         if (exitButton.getScale().x < 0.3 && exitButton.getScale().y < 0.3)
         {
@@ -3761,8 +3966,6 @@ void open_menu()
 {
     Vector2i pixelpos = Mouse::getPosition(window);
     MousePos = window.mapPixelToCoords(pixelpos);
-    /*if (curr_state==death)
-        menu_num = 6;*/
     switch (menu_num)
     {
     case 1:game_openning_menu(); break;
@@ -3799,7 +4002,6 @@ void Menu_Background()
         menu_background.setScale(Vector2f(0.65, 0.65));
         menu_background.setPosition(globalcenter.x - (960 * 0.65), globalcenter.y - (540 * 0.65));
         window.draw(menu_background);
-
         Text high_score; high_score.setFont(normal_font); high_score.setString(" high score : " + to_string(highest_score)); high_score.setFillColor(Color(225, 225, 225, 225)); high_score.setPosition(globalcenter.x + 300, globalcenter.y - 310); high_score.setCharacterSize(32); window.draw(high_score);
 
     }
@@ -3808,6 +4010,7 @@ void Menu_Background()
 
 void Game_over()
 {
+    MusicPlayer.stop();
     overButton.setOrigin(overButton.getLocalBounds().width / 2, overButton.getLocalBounds().height / 2);
     overButton.setPosition(globalcenter.x, globalcenter.y - 100);window.draw(overButton);
     backButton.setOrigin(backButton.getLocalBounds().width / 2, backButton.getLocalBounds().height / 2);
@@ -3827,7 +4030,11 @@ void Game_over()
             outf << 0 << endl;
             outf << highest_score;
             outf.close();
+            EffectsPlayer.stop();
             menu_num = 1;
+            MusicPlayer.setBuffer(music[3]);
+            MusicPlayer.play();
+            music_trigger = false;
         }
         if (backButton.getScale().x < 0.3 && backButton.getScale().y < 0.3)
         {
