@@ -8,7 +8,6 @@
 #include "Candle/LightSource.hpp"
 #include "Candle/RadialLight.hpp"
 #include "Candle/LightingArea.hpp"
-#include "Candle/DirectedLight.hpp"
 #include <sstream>
 #include <iomanip>
 
@@ -40,7 +39,7 @@ bool rocket_player_intersects = false;
 #define Level1NumWaves 3
 
 #define pistolfirerate 0.2f
-#define pistoldamage 6
+#define pistoldamage 12
 #define pistolspread 0
 #define pistolbulletpershot 1
 #define pistolclipsize 9
@@ -50,7 +49,7 @@ int pistolammostock = 36;
 int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.08f
-#define rifledamage 6.6
+#define rifledamage 13.2
 #define riflespread 0
 #define riflebulletpershot 1
 #define rifleclipsize 30
@@ -59,18 +58,18 @@ int pistolbulletsloaded = pistolclipsize;
 int rifleammostock = 90;
 int riflebulletsloaded = rifleclipsize;
 
-#define shotgunfirerate 1
-#define shotgundamage 5
+#define shotgunfirerate 0.7
+#define shotgundamage 10
 #define shotgunspread 1
 #define shotgunbulletpershot 10
 #define shotgunclipsize 8
-#define shotgunreloadtime 1
+#define shotgunreloadtime 1.3
 #define ShotGun_bullets_loaded_per_reload 1
 int shotgunammostock = 24;
 int shotgunbulletsloaded = shotgunclipsize;
 
 #define sniperfirerate 1.6f
-#define sniperdamage 150
+#define sniperdamage 300
 #define sniperspread 0
 #define sniperbulletpershot 1
 #define sniperclipsize 5
@@ -602,7 +601,6 @@ struct SkullFire : public Enemy
             Explosion newexplosion;
             newexplosion.explosionlogic(shape.getPosition(), player_pos, Boss_pos, 250, 100, dashing);
             explosions.push_back(newexplosion);
-            EnemiesKilledWithoutHit--;
             remove_Enemy = true;
         }
     }
@@ -846,17 +844,17 @@ Sprite money;
 Sprite speedmachine;
 Sprite reloadmachine;
 Sprite Crosshair;
+Sprite LockinCrosshair;
 Sprite Portal_S;
 Sprite void1[4];
 Sprite slow_ability;
 Sprite MiniGun_ability;
 Sprite SpeedCola_S;
 Sprite StaminaUp_S;
-Sprite LavaBackground;
 Sprite Turret;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 ContextSettings settings;
-RenderWindow window(VideoMode(1920, 1080), "ZombieGame",Style::Default,settings);
+RenderWindow window(VideoMode(1920, 1080), "ZombieGame", Style::Fullscreen,settings);
 
 
 //menu
@@ -992,7 +990,6 @@ Texture SpeedCola_T;
 Texture StaminaUp_T;
 
 Texture Void;
-Texture LavaVoidBoss;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -1100,11 +1097,13 @@ SoundBuffer BossFireBallSound;
 SoundBuffer BossSpawnEnemiesSound;
 SoundBuffer BossBlindSound;
 
+SoundBuffer VictoryTheme;
+
 Sound EffectsPlayer;
 Sound TurretSoundPlayer;
 Sound BossSoundPlayer;
 
-SoundBuffer music[4];
+SoundBuffer music[5];
 Sound MusicPlayer;
 bool music_trigger = false;
 
@@ -1132,9 +1131,6 @@ Sprite end_game;
 
 Texture Control;
 Sprite control;
-
-Texture HealthBarTexture;
-Sprite HealthBarOverlay;
 
 ostringstream ss;
 View view(Vector2f(0, 0), Vector2f(window.getSize().x, window.getSize().y));
@@ -1202,6 +1198,7 @@ int main()
     ReloadSound.setVolume(48);
     ShootSound.setVolume(48);
     ExplosionSound.setVolume(80);
+    TurretSoundPlayer.setVolume(50);
     ambientlight.setAreaOpacity(0.3);
     ambientlight.setAreaColor(Color::Black);
     Player.setTexture(WalkAnimation[0]);
@@ -1224,7 +1221,6 @@ int main()
         float elapsed = clock.restart().asSeconds();
         playerdeltatime = elapsed;
         elapsed *= slow_multi;
-        //cout << elapsed << endl;
         while (window.pollEvent(event)) {
 
             if (event.type == Event::Closed) {
@@ -1281,8 +1277,6 @@ void GetTextures()
     Tlantren_Lwall2.loadFromFile("lantren_2_Lwall.png");
     Tlantren_Rwall2.loadFromFile("lantren_2_Rwall.png");
     Tlantren_Mwall2.loadFromFile("lantren_2_Mwall.png");
-    HealthBarTexture.loadFromFile("HealthBar.png");
-    HealthBarOverlay.setTexture(HealthBarTexture);
     BossLevel_T.loadFromFile("map.png");
     BossLevel.setTexture(BossLevel_T);
     laserTex.loadFromFile("Beam.png");
@@ -1426,6 +1420,9 @@ void GetTextures()
     CrossHair_Texture.loadFromFile("weapons/crosshair.png");
     Crosshair.setTexture(CrossHair_Texture);
     Crosshair.setScale(0.3, 0.3);
+    LockinCrosshair.setTexture(CrossHair_Texture);
+    //LockinCrosshair.setScale(0.5, 0.5);
+    LockinCrosshair.setColor(Color(170,0,0,128));
     Health_Texture.loadFromFile("health-red_32px.png");
 
     speedmachine_photo.loadFromFile("speedvanding.png");
@@ -1443,10 +1440,6 @@ void GetTextures()
     sniper_photo.loadFromFile("sniper.png");
     sniper_buying.setTexture(sniper_photo);
     Void.loadFromFile("void.jpg");
-    LavaVoidBoss.loadFromFile("Pixelated lava.jpg");
-    LavaBackground.setTexture(LavaVoidBoss);
-    LavaBackground.setScale(3, 4);
-    LavaBackground.setPosition(-500, -500);
 
     slow_ability_photo.loadFromFile("timer.png");
     slow_ability.setTexture(slow_ability_photo);
@@ -1484,8 +1477,9 @@ void GetTextures()
     BossFireBallSound.loadFromFile("Boss/FireBallAttack.wav");
     BossSpawnEnemiesSound.loadFromFile("Boss/SpawnEnemiesSound.wav");
 
-    //GameOver_buffer.loadFromFile("GameOversoundeffect.wav");
+    GameOver_buffer.loadFromFile("GameOversoundeffect.wav");
     Combo_buffer.loadFromFile("PowerChord.wav");
+    VictoryTheme.loadFromFile("VictoryTheme.wav");
 
     SpeedCola_T.loadFromFile("SpeedCola.png");
     StaminaUp_T.loadFromFile("StaminUp.png");
@@ -1501,10 +1495,11 @@ void GetTextures()
     End_game.loadFromFile("gameOver.png");
     Control.loadFromFile("game_controls.png");
 
-    //music[0].loadFromFile("Sad But True (Remastered).wav");
-    //music[1].loadFromFile("Seek & Destroy (Remastered).wav");
-    //music[2].loadFromFile("Metallica Shadows Follow.wav");
-    //music[3].loadFromFile("MainMenuMusic.wav");
+    music[0].loadFromFile("Sad But True (Remastered).wav");
+    music[1].loadFromFile("Seek & Destroy (Remastered).wav");
+    music[2].loadFromFile("Metallica Shadows Follow.wav");
+    music[3].loadFromFile("MainMenuMusic.wav");
+    music[4].loadFromFile("Flow.wav");
 
 
     Vector2f scalefactor = Vector2f(0.2, 0.2);
@@ -1575,11 +1570,17 @@ void Update(float dt)
 
         Dashing();
 
-        //zombies
-        //SpawnZombiesWaves(dt);
+        if (current_level != 4)
+        {
+            SpawnZombiesWaves(dt);
+        }
         HandleZombieBehaviour(dt);
 
-        BossUpdateStuff(dt);
+
+        if (current_level == 4)
+        {
+            BossUpdateStuff(dt);
+        }
 
         calculate_shoot_dir();
         buying_weapons();
@@ -1623,6 +1624,10 @@ void MusicHandler()
     }
     if (MusicPlayer.getStatus() != Sound::Playing && !music_trigger)
     {
+        if (current_level == 4)
+        {
+            current_song = 4;
+        }
         MusicPlayer.setBuffer(music[current_song]);
         MusicPlayer.play();
         music_trigger = true;
@@ -1811,16 +1816,6 @@ void Player_Collision()
     }
     if (Player.getGlobalBounds().intersects(Portal_S.getGlobalBounds()) && PortalOpen && Keyboard::isKeyPressed(Keyboard::E))
     {
-        PortalOpen = false;
-        current_level++;
-        smg_buy = false;
-        shotgun_buy = false;
-        speed_pow = false;
-        reload_pow = false;
-        sniper_buy = false;
-        rocket_buy = false;
-        speedmulti = 1;
-        reloadmulti = 1;
         Money = 0;
         HealthPacks.clear();
         AmmoPacks.clear();
@@ -1830,18 +1825,53 @@ void Player_Collision()
         Enemies.clear();
         bullets.clear();
         Curr_Gun_state = Pistol;
-        SwtichCurrentWallBounds();
         Current_Wave1 = 0;
-        pistolbulletsloaded = 9;
-        riflebulletsloaded = 30;
-        shotgunbulletsloaded = 8;
-        sniperbulletsloaded = 5;
-        rocketbulletsloaded = 1;
+        current_level++;
+        SwtichCurrentWallBounds();
+        PortalOpen = false;
+        if (current_level ==4)
+        {
+            Player.setPosition(760, 960);
+            smg_buy = true;
+            shotgun_buy = true;
+            speed_pow = true;
+            reload_pow = true;
+            sniper_buy = true;
+            rocket_buy = true;
+            speedmulti = 2;
+            reloadmulti = 0.5;
+            pistolbulletsloaded = 9;
+            riflebulletsloaded = 30;
+            shotgunbulletsloaded = 8;
+            sniperbulletsloaded = 5;
+            rocketbulletsloaded = 1;
 
-        rifleammostock = 60;
-        shotgunammostock = 8;
-        sniperammostock = 5;
-        rocketammostock = 2;
+            rifleammostock = 150;
+            shotgunammostock = 24;
+            sniperammostock = 15;
+            rocketammostock = 2;
+        }
+        else
+        {
+            smg_buy = false;
+            shotgun_buy = false;
+            speed_pow = false;
+            reload_pow = false;
+            sniper_buy = false;
+            rocket_buy = false;
+            speedmulti = 1;
+            reloadmulti = 1;
+            pistolbulletsloaded = 9;
+            riflebulletsloaded = 30;
+            shotgunbulletsloaded = 8;
+            sniperbulletsloaded = 5;
+            rocketbulletsloaded = 1;
+
+            rifleammostock = 60;
+            shotgunammostock = 8;
+            sniperammostock = 5;
+            rocketammostock = 2;
+        }
     }
 }
 void Switch_States()
@@ -2724,7 +2754,7 @@ void camera_shake()
 
 void SpawnZombiesWaves(float dt)
 {
-    float multiplier = Current_Wave1 / (float)Level1NumWaves;
+    float multiplier = Current_Wave1 / (float)1;
     SpawningZombieCounter += dt;
     if (canspawn && SpawningZombieCounter >= 1)
     {
@@ -2786,7 +2816,7 @@ void SpawnZombiesWaves(float dt)
             Wave_Cooldown_counter = 0;
         }
     }
-    if (Current_Wave1 > 3 && current_level < 3)
+    if (Current_Wave1 > 1 && current_level <= 3)
     {
         canspawn = false;
         PortalOpen = true;
@@ -2921,7 +2951,11 @@ void BossUpdateStuff(float dt)
     {
         view.zoom(1);
         Enemies.clear();
+        bullets.clear();
         Boss_image_counter = 0;
+        MusicPlayer.stop();
+        EffectsPlayer.setBuffer(VictoryTheme);
+        EffectsPlayer.play();
         Player.setPosition(Boss.getPosition().x, Boss.getPosition().y + 200);
         IsBossDead = true;
     }
@@ -2978,7 +3012,7 @@ void BossAnimationCounter(int maximagecounter, bool isdeath)
     Boss_animation_counter += playerdeltatime;
     if (isdeath)
     {
-        Boss_animation_switchtime = 0.1;
+        Boss_animation_switchtime = 0.7;
     }
     if (Boss_animation_counter >= Boss_animation_switchtime)
     {
@@ -3525,6 +3559,7 @@ void Draw()
     testpoint.setOrigin(testpoint.getLocalBounds().width / 2, testpoint.getLocalBounds().height / 2);
     testpoint.setPosition(Player.getPosition());
     Crosshair.setOrigin(Crosshair.getLocalBounds().width / 2, Crosshair.getLocalBounds().height / 2);
+    LockinCrosshair.setOrigin(LockinCrosshair.getLocalBounds().width / 2, LockinCrosshair.getLocalBounds().height / 2);
     ambientlight.clear();
     if (menu_num != 5 && menu_num != 6) {
         window.clear();
@@ -3801,9 +3836,10 @@ void Draw()
         Portal_S.setPosition(960, 540);
         speedmachine.setPosition(Vector2f(35, 25));
         reloadmachine.setPosition(Vector2f(1500, 25));
-        smg_buying.setPosition(Vector2f(200, 415));
-        shotgun_buying.setPosition(Vector2f(500, 790));
-        sniper_buying.setPosition(Vector2f(1700, 700));
+        smg_buying.setPosition(Vector2f(480, 270));
+        shotgun_buying.setPosition(Vector2f(1440, 270));
+        sniper_buying.setPosition(Vector2f(1440, 810));
+        Rocket_buying.setPosition(Vector2f(480, 810));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -3919,8 +3955,11 @@ void Draw()
         }
 
     }
-    window.draw(speedmachine);
-    window.draw(reloadmachine);
+    if (current_level != 4)
+    {
+        window.draw(speedmachine);
+        window.draw(reloadmachine);
+    }
     Portal_S.setOrigin(Portal_S.getLocalBounds().width / 2, Portal_S.getLocalBounds().height / 2);
     if (PortalOpen)
     {
@@ -3931,7 +3970,10 @@ void Draw()
         bloodeffects[i].BloodShape.setOrigin(bloodeffects[i].BloodShape.getLocalBounds().width / 2, bloodeffects[i].BloodShape.getLocalBounds().height / 2);
         window.draw(bloodeffects[i].BloodShape);
     }
-    WeaponsBuyDrawing();
+    if (current_level != 4)
+    {
+        WeaponsBuyDrawing();
+    }
     window.draw(Player);
     Boss.setScale(2, 2);
     light.setRange(200);
@@ -3939,7 +3981,7 @@ void Draw()
     window.draw(light);
     ambientlight.draw(light);
 
-    if (!BossDone)
+    if (!BossDone && current_level == 4)
     {
         window.draw(Boss);
         light.setIntensity(100);
@@ -4140,8 +4182,8 @@ void Draw()
         Combo();
         if (LockingIn)
         {
-            Crosshair.setPosition(Player.getPosition());
-            window.draw(Crosshair);
+            LockinCrosshair.setPosition(Player.getPosition());
+            window.draw(LockinCrosshair);
         }
     }
     if (BossDone)
@@ -4152,7 +4194,7 @@ void Draw()
         light.setOrigin(light.getLocalBounds().width / 2, light.getLocalBounds().height / 2);
         if (winnerAlpha < 255)
         {
-            winnerAlpha += playerdeltatime * 80;
+            winnerAlpha += playerdeltatime * 40;
         }
         winningText.setFont(normal_font); // select the font 
         winningText.setString("Thank you for Playing <3 \n\t\t    Score: " + to_string(Score));
@@ -4181,6 +4223,7 @@ void Draw()
                     outf << Score << endl;
                     outf.close();
                 }
+                EffectsPlayer.stop();
                 menu_num = 1;
                 MusicPlayer.setBuffer(music[3]);
                 MusicPlayer.play();
@@ -4566,7 +4609,7 @@ void buying_weapons()
 //Menu Functions
 void StartNewGame()
 {
-    current_level = 4;
+    current_level = 1;
     SwtichCurrentWallBounds();
     Player.setPosition(900, 300);
     Player_Health = 100;
@@ -4574,14 +4617,14 @@ void StartNewGame()
     menu_num = 0;
     TotalSpawnedZombies = 0;
     PortalOpen = false;
-    smg_buy = true;
-    shotgun_buy = true;
-    speed_pow = true;
-    reload_pow = true;
-    sniper_buy = true;
-    rocket_buy = true;
-    speedmulti = 2;
-    reloadmulti = 0.5;
+    smg_buy = false;
+    shotgun_buy = false;
+    speed_pow = false;
+    reload_pow = false;
+    sniper_buy = false;
+    rocket_buy = false;
+    speedmulti = 1;
+    reloadmulti = 1;
     Money = 0;
     HealthPacks.clear();
     bloodeffects.clear();
@@ -4612,7 +4655,7 @@ void StartNewGame()
     rifleammostock = 60;
     shotgunammostock = 8;
     sniperammostock = 5;
-    rocketammostock = 2;
+    rocketammostock = 1;
     MusicPlayer.stop();
     music_trigger = false;
 }
