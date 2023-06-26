@@ -4782,7 +4782,7 @@ void Dialogue()
 //Menu Functions
 void StartNewGame()
 {
-    current_level = 3;
+    current_level = 1;
     SwtichCurrentWallBounds();
     Player.setPosition(900, 300);
     Player_Health = 100;
