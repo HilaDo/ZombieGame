@@ -1193,7 +1193,7 @@ float Boss_animation_switchtime = 0.2;
 int Boss_image_counter = 0;
 bool Boss_animation_done_once = false;
 int SelectedAbility = 3;
-int previousSelected = 5;
+int previousSelected = 999;
 bool BossDone = false;
 
 //Dialogue Variables
@@ -1681,7 +1681,7 @@ void MusicHandler()
     {
         music_trigger = false;
         current_song++;
-        if (current_song > 3)
+        if (current_song > 2)
         {
             current_song = 0;
         }
@@ -1882,6 +1882,7 @@ void Player_Collision()
         current_level++;
         SwtichCurrentWallBounds();
         PortalOpen = false;
+        Player_Health = 100;
         if (current_level ==4)
         {
             Player.setScale(2,2);
@@ -1898,6 +1899,7 @@ void Player_Collision()
             rocket_buy = true;
             speedmulti = 2;
             reloadmulti = 0.5;
+            BossHealth = 6000;
             pistolbulletsloaded = 9;
             riflebulletsloaded = 30;
             shotgunbulletsloaded = 8;
@@ -2089,6 +2091,8 @@ void TimeSlow()
         slow_counter += playerdeltatime;
         if (slow_counter > 10.0)
         {
+            EffectsPlayer.setBuffer(AbilityReadSound);
+            EffectsPlayer.play();
             Slowready = true;
             slow_counter = 0;
         }
@@ -2119,6 +2123,8 @@ void MiniGunAbility()
         minigun_counter += playerdeltatime;
         if (minigun_counter >= 6.0)
         {
+            EffectsPlayer.setBuffer(AbilityReadSound);
+            EffectsPlayer.play();
             isMinigunReady = true;
             minigun_counter = 0;
         }
@@ -2864,7 +2870,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 30 * Current_Wave1)
+    if (TotalSpawnedZombies >= 1 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -3193,7 +3199,7 @@ void BossAbilitySelector(float dt)
         {
             BossBlind(dt);
         }     
-        if (RandomAbility == 5)
+        if (RandomAbility == 5 || RandomAbility == 6)
         {
             BossSpawnEnemies();
         }
@@ -4728,7 +4734,6 @@ void Dialogue()
     DialogueCounter += playerdeltatime;
     Current_D_Text.setFont(normal_font);
     Current_D_Text.setCharacterSize(36);
-    //Current_D_Text.setOrigin(Current_D_Text.getLocalBounds().width / 2, Current_D_Text.getLocalBounds().height / 2);
     Current_D_Text.setPosition(window.mapPixelToCoords(Vector2i(200, 850)));
     DialogueBox.setOrigin(DialogueBox.getLocalBounds().width / 2, DialogueBox.getLocalBounds().height / 2);
     DialogueBox.setPosition(window.mapPixelToCoords(Vector2i(960, 936)));
@@ -4806,6 +4811,7 @@ void StartNewGame()
     bullets.clear();
     AmmoPacks.clear();
     muzzleEffects.clear();
+    LaserBeams.clear();
     Curr_Gun_state = Pistol;
     Current_Wave1 = 0;
     MusicPlayer.stop();
