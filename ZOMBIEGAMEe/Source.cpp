@@ -39,7 +39,7 @@ bool rocket_player_intersects = false;
 #define Level1NumWaves 3
 
 #define pistolfirerate 0.2f
-#define pistoldamage 12
+#define pistoldamage 16
 #define pistolspread 0
 #define pistolbulletpershot 1
 #define pistolclipsize 9
@@ -49,7 +49,7 @@ int pistolammostock = 36;
 int pistolbulletsloaded = pistolclipsize;
 
 #define riflefirerate 0.08f
-#define rifledamage 13.2
+#define rifledamage 15.2
 #define riflespread 0
 #define riflebulletpershot 1
 #define rifleclipsize 30
@@ -59,17 +59,17 @@ int rifleammostock = 90;
 int riflebulletsloaded = rifleclipsize;
 
 #define shotgunfirerate 0.7
-#define shotgundamage 10
+#define shotgundamage 7
 #define shotgunspread 1
 #define shotgunbulletpershot 10
 #define shotgunclipsize 8
-#define shotgunreloadtime 1.3
+#define shotgunreloadtime 1
 #define ShotGun_bullets_loaded_per_reload 1
 int shotgunammostock = 24;
 int shotgunbulletsloaded = shotgunclipsize;
 
 #define sniperfirerate 1.6f
-#define sniperdamage 300
+#define sniperdamage 150
 #define sniperspread 0
 #define sniperbulletpershot 1
 #define sniperclipsize 5
@@ -79,7 +79,7 @@ int sniperammostock = 15;
 int sniperbulletsloaded = sniperclipsize;
 
 #define minigunfirerate 0.05
-#define minigundamage 3
+#define minigundamage 5
 #define minigunspread 2
 #define minigunbulletpershot 3
 #define minigunclipsize 2000
@@ -89,7 +89,7 @@ int minigunammostock = 99999999;
 int minigunbulletsloaded = minigunclipsize;
 
 #define rocketfirerate 2
-#define rocketdamage 500
+#define rocketdamage 250
 #define rocketspread 0
 #define rocketbulletpershot 1
 #define rocketclipsize 1
@@ -459,7 +459,7 @@ void SpawnBlood(Enemy& enemy)
         EnemiesKilledWithoutHit++;
         int random_num = rand() % 100;
         enemy.isdeath = true;
-        if (random_num > 70 && random_num < 81)
+        if (random_num >= 89 && random_num <94)
         {
             Sprite newhealthpack;
             newhealthpack.setTexture(Health_Texture);
@@ -467,7 +467,7 @@ void SpawnBlood(Enemy& enemy)
             HealthPacks.push_back(newhealthpack);
 
         }
-        else if (random_num > 80 && random_num < 90)
+        else if (random_num >= 94)
         {
             Sprite newammostock;
             newammostock.setTexture(ammo_smg_photo);
@@ -476,9 +476,9 @@ void SpawnBlood(Enemy& enemy)
         }
         switch (enemy.type)
         {
-        case 0:Score += 25 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10) ); Money += 50; break;
-        case 1:Score += 50 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 75; break;
-        case 2:Score += 100 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 150; break;
+        case 0:Score += 25 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 75;  break;
+        case 1:Score += 50 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 100; break;
+        case 2:Score += 100 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 225; break;
         }
     }
 }
@@ -528,7 +528,7 @@ struct Explosion
                 if (distance <= radius)
                 {
                     Enemies[k]->currentvelocity = -Vector2f(Enemies[k]->currentvelocity.x + 100, Enemies[k]->currentvelocity.y + 100);
-                    Enemies[k]->health -= damage * (15 / distance);
+                    Enemies[k]->health -= damage;
                     SpawnBlood(*Enemies[k]);
                 }
             }
@@ -599,7 +599,7 @@ struct SkullFire : public Enemy
         else if (isdeath)
         {
             Explosion newexplosion;
-            newexplosion.explosionlogic(shape.getPosition(), player_pos, Boss_pos, 250, 100, dashing);
+            newexplosion.explosionlogic(shape.getPosition(), player_pos, Boss_pos, 250, rocket_radius, dashing);
             explosions.push_back(newexplosion);
             remove_Enemy = true;
         }
@@ -744,6 +744,8 @@ void Combo();
 void WeaponsBuyDrawing();
 void UI();
 
+void Dialogue();
+
 //menu
 void StartNewGame();
 
@@ -849,9 +851,11 @@ Sprite Portal_S;
 Sprite void1[4];
 Sprite slow_ability;
 Sprite MiniGun_ability;
+Sprite Turret_ability;
 Sprite SpeedCola_S;
 Sprite StaminaUp_S;
 Sprite Turret;
+Sprite DialogueBox;
 RectangleShape DashOrigin(Vector2f(50.0f, 50.0f));
 ContextSettings settings;
 RenderWindow window(VideoMode(1920, 1080), "ZombieGame", Style::Fullscreen,settings);
@@ -985,11 +989,14 @@ Texture reloadmachine_photo;
 
 Texture slow_ability_photo;
 Texture minigun_ability_photo;
+Texture Turret_ability_photo;
 
 Texture SpeedCola_T;
 Texture StaminaUp_T;
 
 Texture Void;
+
+Texture DialogueBox_T;
 
 //reload counter and current time that takes the reload to finish
 float current_reload_time;
@@ -1099,6 +1106,8 @@ SoundBuffer BossBlindSound;
 
 SoundBuffer VictoryTheme;
 
+SoundBuffer AbilityReadSound;
+
 Sound EffectsPlayer;
 Sound TurretSoundPlayer;
 Sound BossSoundPlayer;
@@ -1155,6 +1164,8 @@ CircleShape explosionArea;
 bool IsBlind = false;
 float blindcounter = 0;
 float blindduration = 6;
+float CurrentVolume = 80;
+float blindVolumeCounter = 0;
 Texture FireBallAnimation[5];
 float Boss_FireRate_counter = 0;
 float Boss_Fire_Rate = 0.7;
@@ -1181,8 +1192,26 @@ float Boss_animation_counter = 0;
 float Boss_animation_switchtime = 0.2;
 int Boss_image_counter = 0;
 bool Boss_animation_done_once = false;
-int previousAbility = 3;
+int SelectedAbility = 3;
+int previousSelected = 5;
 bool BossDone = false;
+
+//Dialogue Variables
+
+bool IsDialogueActive = false;
+bool finishedCurrentDialogue = false;
+float DialogueCounter = 0;
+float DialogueSpeed = 0.05;
+int letterindex = 0;
+int current_dialogue = 0;
+Text Current_D_Text;
+
+string Current_String;
+string DisplayedString;
+string Boss_D_Intro = "Well Well Well....You Passed all my trials, Perhaps I underestimated you...";
+string Player_D_Intro = "Your reign of terror ends now!";
+string Boss_D_Outro = "TRY AND STOP ME!";
+
 LightingArea ambientlight(candle::LightingArea::FOG,Vector2f(0,0),Vector2f(1920, 1920));
 float playerdeltatime;
 int main()
@@ -1195,10 +1224,10 @@ int main()
     settings.depthBits = 24;
     settings.stencilBits = 8;
     settings.antialiasingLevel = 2;
-    ReloadSound.setVolume(48);
-    ShootSound.setVolume(48);
-    ExplosionSound.setVolume(80);
-    TurretSoundPlayer.setVolume(50);
+    ReloadSound.setVolume(CurrentVolume);
+    ShootSound.setVolume(CurrentVolume);
+    ExplosionSound.setVolume(CurrentVolume);
+    TurretSoundPlayer.setVolume(CurrentVolume);
     ambientlight.setAreaOpacity(0.3);
     ambientlight.setAreaColor(Color::Black);
     Player.setTexture(WalkAnimation[0]);
@@ -1280,6 +1309,9 @@ void GetTextures()
     BossLevel_T.loadFromFile("map.png");
     BossLevel.setTexture(BossLevel_T);
     laserTex.loadFromFile("Beam.png");
+    DialogueBox_T.loadFromFile("DialogueBox.png");
+    DialogueBox.setTexture(DialogueBox_T);
+    DialogueBox.setScale(0.9, 0.5);
     for (int i = 0; i < 8; i++)
     {
         WalkAnimation[i].loadFromFile("anim by rows/walk/tile" + std::to_string(i) + ".png");
@@ -1449,6 +1481,10 @@ void GetTextures()
     MiniGun_ability.setTexture(minigun_ability_photo);
     MiniGun_ability.setScale(0.05, 0.05);
 
+    Turret_ability_photo.loadFromFile("TurretIcon.png");
+    Turret_ability.setTexture(Turret_ability_photo);
+    Turret_ability.setScale(0.25, 0.25);
+
     Pistol_shoot_Sound.loadFromFile("sounds to use/Pistol/PistolShootSound.WAV");
     Pistol_reload_Sound.loadFromFile("sounds to use/Pistol/PistolReloadSound.wav");
 
@@ -1480,6 +1516,8 @@ void GetTextures()
     GameOver_buffer.loadFromFile("GameOversoundeffect.wav");
     Combo_buffer.loadFromFile("PowerChord.wav");
     VictoryTheme.loadFromFile("VictoryTheme.wav");
+
+    AbilityReadSound.loadFromFile("AbilityReadySound.wav");
 
     SpeedCola_T.loadFromFile("SpeedCola.png");
     StaminaUp_T.loadFromFile("StaminUp.png");
@@ -1551,24 +1589,21 @@ void Update(float dt)
     
     if (curr_state != state::death)
     {  
-
-        if (Keyboard::isKeyPressed(Keyboard::O));
-        {
-            //cout << MousePos.x <<"\t" << MousePos.y << endl;
-        }
-
         current_player_pos = DashOrigin.getPosition();
         Vector2i pixelpos = Mouse::getPosition(window);
         MousePos = window.mapPixelToCoords(pixelpos);
         globalorigin = window.mapPixelToCoords(Vector2i(0,0));
-        if (menu_num == 0)
+        if (menu_num == 0 && !IsBossDead)
         {
             MusicHandler();
         }
-        Player_Movement();
-        Player_Collision();
+        if (!IsDialogueActive)
+        {
+            Player_Movement();
+            Player_Collision();
 
-        Dashing();
+            Dashing();
+        }
 
         if (current_level != 4)
         {
@@ -1582,27 +1617,30 @@ void Update(float dt)
             BossUpdateStuff(dt);
         }
 
-        calculate_shoot_dir();
-        buying_weapons();
-        select_guns();
-        Switch_Current_Gun_Attributes();
-        Shooting();
-        Bullet_Movement_Collision(dt);
-        Gun_switch_cooldown();
-        switch (current_level)
+        if (!IsDialogueActive)
         {
-        case 2:
-            TimeSlow();
-            break;
-        case 3:
-            MiniGunAbility();
-            break;
-        case 4:
-            TurretAbility();
-            break;
+            calculate_shoot_dir();
+            buying_weapons();
+            select_guns();
+            Switch_Current_Gun_Attributes();
+            Shooting();
+            Bullet_Movement_Collision(dt);
+            Gun_switch_cooldown();
+            switch (current_level)
+            {
+            case 2:
+                TimeSlow();
+                break;
+            case 3:
+                MiniGunAbility();
+                break;
+            case 4:
+                TurretAbility();
+                break;
+            }
+            if (delayfinished) { Guns_Animation_Handling(); }
+            camera_shake();
         }
-        if (delayfinished) { Guns_Animation_Handling(); }
-        camera_shake();
 
 
         previous_player_pos = current_player_pos;
@@ -1614,6 +1652,13 @@ void Update(float dt)
 //music function
 void MusicHandler()
 {
+    MusicPlayer.setVolume(CurrentVolume);
+    EffectsPlayer.setVolume(CurrentVolume);
+    BossSoundPlayer.setVolume(CurrentVolume);
+    TurretSoundPlayer.setVolume(CurrentVolume);
+    ExplosionSound.setVolume(CurrentVolume);
+    ReloadSound.setVolume(CurrentVolume);
+    ShootSound.setVolume(CurrentVolume);
     if (isSlowing)
     {
         MusicPlayer.setPitch(0.5);
@@ -1743,6 +1788,14 @@ void Player_Collision()
             blindcounter += playerdeltatime;
         }
     }
+    if (CurrentVolume > 20 && IsBlind)
+    {
+        CurrentVolume -= playerdeltatime * 10;
+    }
+    if (CurrentVolume < 80 && !IsBlind)
+    {
+        CurrentVolume += playerdeltatime * 10;
+    }
     if (ambientlight.getAreaOpacity() < 0.98 && IsBlind)
     {
         ambientlight.setAreaOpacity(ambientlight.getAreaOpacity() + playerdeltatime * 0.5);
@@ -1770,10 +1823,10 @@ void Player_Collision()
     {
         if (Player.getGlobalBounds().intersects(AmmoPacks[i].getGlobalBounds()))
         {
-            rifleammostock += 30;
-            shotgunammostock += 4;
+            rifleammostock += 60;
+            shotgunammostock += 16;
             sniperammostock += 10;
-            rocketammostock += 2;
+            rocketammostock += 1;
             AmmoPacks.erase(AmmoPacks.begin() + i);
         }
     }
@@ -1831,7 +1884,12 @@ void Player_Collision()
         PortalOpen = false;
         if (current_level ==4)
         {
+            Player.setScale(2,2);
+            MovementDirection = Vector2f(0, 0);
             Player.setPosition(760, 960);
+            Boss.setPosition(960, 900);
+            Boss.setScale(-2, 2);
+            IsDialogueActive = true;
             smg_buy = true;
             shotgun_buy = true;
             speed_pow = true;
@@ -1850,6 +1908,9 @@ void Player_Collision()
             shotgunammostock = 24;
             sniperammostock = 15;
             rocketammostock = 2;
+
+            MusicPlayer.stop();
+            music_trigger = false;
         }
         else
         {
@@ -1867,8 +1928,8 @@ void Player_Collision()
             sniperbulletsloaded = 5;
             rocketbulletsloaded = 1;
 
-            rifleammostock = 60;
-            shotgunammostock = 8;
+            rifleammostock = 120;
+            shotgunammostock = 24;
             sniperammostock = 5;
             rocketammostock = 2;
         }
@@ -2150,7 +2211,7 @@ void TurretAbility()
     if (isTurretActive && !isTurretReady)
     {
         turret_counter += playerdeltatime;
-        if (Enemies.size()!=0)
+        if (Enemies.size() != 0)
         {
             TurretLogic();
         }
@@ -2165,6 +2226,8 @@ void TurretAbility()
         turret_counter += playerdeltatime;
         if (turret_counter > 0.1)
         {
+            EffectsPlayer.setBuffer(AbilityReadSound);
+            EffectsPlayer.play();
             isTurretReady = true;
             turret_counter = 0;
         }
@@ -2754,7 +2817,7 @@ void camera_shake()
 
 void SpawnZombiesWaves(float dt)
 {
-    float multiplier = Current_Wave1 / (float)1;
+    float multiplier = (Current_Wave1 / (float)Level1NumWaves) * 1.5f;
     SpawningZombieCounter += dt;
     if (canspawn && SpawningZombieCounter >= 1)
     {
@@ -2775,7 +2838,7 @@ void SpawnZombiesWaves(float dt)
             auto newzombie = make_unique<Zombie>();
             newzombie->type = 2;
             newzombie->shape.setPosition(150 + rand() % 1770, 150 + rand() % 930);
-            newzombie->damage *= multiplier * 8;
+            newzombie->damage *= multiplier * 4;
             newzombie->animation_duration *= 3;
             newzombie->Death_animation_duration /= 2;
             newzombie->maxwalkframes = 8;
@@ -2801,7 +2864,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 35 * Current_Wave1)
+    if (TotalSpawnedZombies >= 30 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -2816,7 +2879,7 @@ void SpawnZombiesWaves(float dt)
             Wave_Cooldown_counter = 0;
         }
     }
-    if (Current_Wave1 > 1 && current_level <= 3)
+    if (Current_Wave1 > 3 && current_level <= 3)
     {
         canspawn = false;
         PortalOpen = true;
@@ -2936,37 +2999,41 @@ void HandleZombieBehaviour(float dt)
 }
 
 //Boss-Fight Functions
+
 void BossUpdateStuff(float dt)
 {
-    for (int i = 0; i < LaserBeams.size(); i++)
+    if (!IsDialogueActive)
     {
-        if (LaserBeams[i].deleteme)
+        for (int i = 0; i < LaserBeams.size(); i++)
         {
-            LaserBeams.erase(LaserBeams.begin() + i);
-            break;
+            if (LaserBeams[i].deleteme)
+            {
+                LaserBeams.erase(LaserBeams.begin() + i);
+                break;
+            }
+            LaserBeams[i].LaserBeamAnimation(dt);
         }
-        LaserBeams[i].LaserBeamAnimation(dt);
-    }
-    if (BossHealth <= 0 && !IsBossDead)
-    {
-        view.zoom(1);
-        Enemies.clear();
-        bullets.clear();
-        Boss_image_counter = 0;
-        MusicPlayer.stop();
-        EffectsPlayer.setBuffer(VictoryTheme);
-        EffectsPlayer.play();
-        Player.setPosition(Boss.getPosition().x, Boss.getPosition().y + 200);
-        IsBossDead = true;
-    }
-    if (!IsBossDead)
-    {
-        BossMovement(dt);
-        BossAbilitySelector(dt);
-    }
-    else
-    {
-        Curr_Boss_State = Death;
+        if (BossHealth <= 0 && !IsBossDead)
+        {
+            view.zoom(1);
+            Enemies.clear();
+            bullets.clear();
+            Boss_image_counter = 0;
+            MusicPlayer.stop();
+            MusicPlayer.setBuffer(VictoryTheme);
+            MusicPlayer.play();
+            Player.setPosition(Boss.getPosition().x, Boss.getPosition().y + 200);
+            IsBossDead = true;
+        }
+        if (!IsBossDead)
+        {
+            BossMovement(dt);
+            BossAbilitySelector(dt);
+        }
+        else
+        {
+            Curr_Boss_State = Death;
+        }
     }
     if (!BossDone)
     {
@@ -2998,13 +3065,13 @@ void BossMovement(float dt)
     if (distancefromplayer > 250 && !isCasting)
     {
         Curr_Boss_State = Walk;
-        if (Ability_Ready)
-        {
-            isCasting = true;
-            Ability_Ready = false;
-            BossAbilityRoller();
-        }
         Boss.move(Vector2f(Boss_move_dir.x * Boss_Player_Norm_dir.x * dt, Boss_move_dir.y * Boss_Player_Norm_dir.y * dt));
+    }
+    if (Ability_Ready)
+    {
+        isCasting = true;
+        Ability_Ready = false;
+        BossAbilityRoller();
     }
 }
 void BossAnimationCounter(int maximagecounter, bool isdeath)
@@ -3059,31 +3126,55 @@ void BossAnimationHandler()
 }
 void BossAbilityRoller()
 {
-    RandomAbility = rand() % 6;
+    RandomAbility = rand() % 7;
     if (RandomAbility <= 1)
     {
-        LockingIn = false;
-        Curr_Boss_State = LaserAtk;
-        BossSoundPlayer.setBuffer(BossLaserSound);
+        SelectedAbility = 1;
     }
     if (RandomAbility > 1 &&RandomAbility <4 )
     {
-        Curr_Boss_State = BulletAtk;
-        BossSoundPlayer.setBuffer(BossFireBallSound);
+        SelectedAbility = 2;
     }
     if(RandomAbility == 4)
     {
+        SelectedAbility = 3;
+    }
+    if (RandomAbility == 5 || RandomAbility == 6)
+    {
+        SelectedAbility = 4;
+    }
+    if (SelectedAbility == previousSelected)
+    {
+        BossAbilityRoller();
+        return;
+    }
+    switch (SelectedAbility)
+    {
+    case 1:
+        LockingIn = false;
+        Curr_Boss_State = LaserAtk;
+        BossSoundPlayer.setBuffer(BossLaserSound);
+        previousSelected = 1;
+        break;
+    case 2:
+        Curr_Boss_State = BulletAtk;
+        BossSoundPlayer.setBuffer(BossFireBallSound);
+        previousSelected = 2;
+        break;
+    case 3:
         IsBlind = true;
         blindcounter = 0;
         Curr_Boss_State = BlindAtk;
         BossSoundPlayer.setBuffer(BossBlindSound);
         BossSoundPlayer.play();
-    }
-    if (RandomAbility == 5)
-    {
+        previousSelected = 3;
+        break;
+    case 4:
         Curr_Boss_State == LaserAtk;
         BossSoundPlayer.setBuffer(BossSpawnEnemiesSound);
         BossSoundPlayer.play();
+        previousSelected = 4;
+        break;
     }
 }
 void BossAbilitySelector(float dt)
@@ -3564,18 +3655,24 @@ void Draw()
     if (menu_num != 5 && menu_num != 6) {
         window.clear();
     }
-
-    if (floor(dir_vector.x) > 0)
+    if (!IsDialogueActive)
     {
-        Player.setScale(2, 2);
-        Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
-        Gun.setScale(0.5, 0.5);
+        if (floor(dir_vector.x) > 0)
+        {
+            Player.setScale(2, 2);
+            Gun.setPosition(Player.getPosition().x + 15, Player.getPosition().y + 20.f);
+            Gun.setScale(0.5, 0.5);
+        }
+        else
+        {
+            Player.setScale(-2, 2);
+            Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
+            Gun.setScale(0.5, -0.5);
+        }
     }
     else
     {
-        Player.setScale(-2, 2);
-        Gun.setPosition(Player.getPosition().x - 15, Player.getPosition().y + 20.f);
-        Gun.setScale(0.5, -0.5);
+        Player.setScale(2, 2);
     }
     test.setOrigin(test.getLocalBounds().width / 2, test.getLocalBounds().height / 2);
     switch (current_level)
@@ -3697,6 +3794,7 @@ void Draw()
         smg_buying.setPosition(Vector2f(200, 415));
         shotgun_buying.setPosition(Vector2f(1000, 790));
         sniper_buying.setPosition(Vector2f(1700, 700));
+        Rocket_buying.setPosition(Vector2f(1700, 200));
         //upper wall
         for (int i = 0; i < 5; i++)
         {
@@ -3975,7 +4073,6 @@ void Draw()
         WeaponsBuyDrawing();
     }
     window.draw(Player);
-    Boss.setScale(2, 2);
     light.setRange(200);
     light.setPosition(Player.getPosition());
     window.draw(light);
@@ -3983,6 +4080,14 @@ void Draw()
 
     if (!BossDone && current_level == 4)
     {
+        if (Boss_Player_Norm_dir.x > 0)
+        {
+            Boss.setScale(2, 2);
+        }
+        else
+        {
+            Boss.setScale(-2, 2);
+        }
         window.draw(Boss);
         light.setIntensity(100);
         light.setColor(Color(155, 25, 25));
@@ -4131,12 +4236,7 @@ void Draw()
         RocketL_S.setRotation(Gun.getRotation());
         window.draw(RocketL_S);
         break;
-    } 
-    if (isTurretActive)
-    {
-        Turret.setOrigin(Turret.getLocalBounds().width / 2, Turret.getLocalBounds().height / 2);
-        window.draw(Turret);
-    }
+    }     
     for (int i = 0; i < muzzleEffects.size(); i++)
     {
         window.draw(muzzleEffects[i].MuzzleEffect);
@@ -4157,91 +4257,101 @@ void Draw()
     void1[2].setPosition(1920, 0);
     void1[3].setPosition(-2864, -400);
     speedmachine.setScale(0.5, 0.5);
-    reloadmachine.setScale(0.5, 0.5);        
-    if (!IsBossDead)
+    reloadmachine.setScale(0.5, 0.5);
+    if (!IsDialogueActive)
     {
-        if (LockingIn)
+        if (!IsBossDead)
         {
-            explosionArea.setRadius(100);
-            explosionArea.setFillColor(Color(180, 0, 0, 64));
-            explosionArea.setOrigin(explosionArea.getLocalBounds().width / 2, explosionArea.getLocalBounds().height / 2);
-            explosionArea.setPosition(endpoint);
-            window.draw(explosionArea);
+            if (isTurretActive)
+            {
+                Turret.setOrigin(Turret.getLocalBounds().width / 2, Turret.getLocalBounds().height / 2);
+                window.draw(Turret);
+            }
+            if (LockingIn)
+            {
+                explosionArea.setRadius(100);
+                explosionArea.setFillColor(Color(180, 0, 0, 64));
+                explosionArea.setOrigin(explosionArea.getLocalBounds().width / 2, explosionArea.getLocalBounds().height / 2);
+                explosionArea.setPosition(endpoint);
+                window.draw(explosionArea);
+            }
+            for (int i = 0; i < LaserBeams.size(); i++)
+            {
+                window.draw(LaserBeams[i].laserSprite);
+                window.draw(LaserBeams[i].beamLight);
+                ambientlight.draw(LaserBeams[i].beamLight);
+            }
+            for (int i = 0; i < explosions.size(); i++)
+            {
+                window.draw(explosions[i].shape);
+            }
+            UI();
+            Combo();
+            if (LockingIn)
+            {
+                LockinCrosshair.setPosition(Player.getPosition());
+                window.draw(LockinCrosshair);
+            }
         }
-        for (int i = 0; i < LaserBeams.size(); i++)
+        if (BossDone)
         {
-            window.draw(LaserBeams[i].laserSprite);
-            window.draw(LaserBeams[i].beamLight);
-            ambientlight.draw(LaserBeams[i].beamLight);
-        }
-        for (int i = 0; i < explosions.size(); i++)
-        {
-            window.draw(explosions[i].shape);
-        }
-        UI();
-        Combo();
-        if (LockingIn)
-        {
-            LockinCrosshair.setPosition(Player.getPosition());
-            window.draw(LockinCrosshair);
+            light.setIntensity(200);
+            light.setColor(Color(255, 176, 176));
+            light.setRange(WinningColor.a * 2);
+            light.setOrigin(light.getLocalBounds().width / 2, light.getLocalBounds().height / 2);
+            if (winnerAlpha < 255)
+            {
+                winnerAlpha += playerdeltatime * 40;
+            }
+            winningText.setFont(normal_font); // select the font 
+            winningText.setString("Thank you for Playing <3 \n\t\t    Score: " + to_string(Score));
+            winningText.setCharacterSize(36);
+            if (WinningColor.a < 250)
+            {
+                WinningColor.a = static_cast<sf::Uint8>(winnerAlpha);
+            }
+            winningText.setFillColor(WinningColor);
+            winningText.setOrigin(winningText.getLocalBounds().width / 2, winningText.getLocalBounds().width / 2);
+            winningText.setPosition(window.mapPixelToCoords(Vector2i(960, 960)));
+            light.setPosition(window.mapPixelToCoords(Vector2i(960, 800)));
+            window.draw(light);
+            ambientlight.draw(light);
+            exitButton.setPosition(window.mapPixelToCoords(Vector2i(960, 400))); FloatRect collesion2 = exitButton.getGlobalBounds();
+            exitButton.setOrigin(exitButton.getLocalBounds().width / 2, exitButton.getLocalBounds().height / 2);
+            exitButton.setColor(Color(exitButton.getColor().r, exitButton.getColor().g, exitButton.getColor().b, winnerAlpha));
+            window.draw(exitButton);
+            if (collesion2.contains(MousePos))
+            {
+                if (Mouse::isButtonPressed(Mouse::Left))
+                {
+                    if (Score > highest_score)
+                    {
+                        highest_score = Score;
+                    }
+                    EffectsPlayer.stop();
+                    menu_num = 1;
+                    MusicPlayer.setBuffer(music[3]);
+                    MusicPlayer.play();
+                    music_trigger = false;
+                }
+                if (exitButton.getScale().x < 0.3 && exitButton.getScale().y < 0.3)
+                {
+                    exitButton.setScale(exitButton.getScale().x + playerdeltatime * 2, exitButton.getScale().x + playerdeltatime * 2);
+                }
+            }
+            else
+            {
+                if (exitButton.getScale().x > 0.2 && exitButton.getScale().y > 0.2)
+                {
+                    exitButton.setScale(exitButton.getScale().x - playerdeltatime * 2, exitButton.getScale().x - playerdeltatime * 2);
+                }
+            }
+            window.draw(winningText);
         }
     }
-    if (BossDone)
+    else
     {
-        light.setIntensity(200);
-        light.setColor(Color(255, 176, 176));
-        light.setRange(WinningColor.a * 2);
-        light.setOrigin(light.getLocalBounds().width / 2, light.getLocalBounds().height / 2);
-        if (winnerAlpha < 255)
-        {
-            winnerAlpha += playerdeltatime * 40;
-        }
-        winningText.setFont(normal_font); // select the font 
-        winningText.setString("Thank you for Playing <3 \n\t\t    Score: " + to_string(Score));
-        winningText.setCharacterSize(36);
-        if (WinningColor.a < 250)
-        {
-            WinningColor.a = static_cast<sf::Uint8>(winnerAlpha);
-        }
-        winningText.setFillColor(WinningColor);
-        winningText.setOrigin(winningText.getLocalBounds().width / 2, winningText.getLocalBounds().width / 2);
-        winningText.setPosition(window.mapPixelToCoords(Vector2i(960, 960)));
-        light.setPosition(window.mapPixelToCoords(Vector2i(960, 800)));
-        window.draw(light);
-        ambientlight.draw(light);
-        exitButton.setPosition(window.mapPixelToCoords(Vector2i(960, 400))); FloatRect collesion2 = exitButton.getGlobalBounds();
-        exitButton.setOrigin(exitButton.getLocalBounds().width / 2, exitButton.getLocalBounds().height / 2);
-        exitButton.setColor(Color(exitButton.getColor().r, exitButton.getColor().g, exitButton.getColor().b, winnerAlpha));
-        window.draw(exitButton);
-        if (collesion2.contains(MousePos))
-        {
-            if (Mouse::isButtonPressed(Mouse::Left))
-            {
-                if (Score > highest_score)
-                {
-                    ofstream outf("savegame.txt");
-                    outf << Score << endl;
-                    outf.close();
-                }
-                EffectsPlayer.stop();
-                menu_num = 1;
-                MusicPlayer.setBuffer(music[3]);
-                MusicPlayer.play();
-                music_trigger = false;
-            }
-            if (exitButton.getScale().x < 0.3 && exitButton.getScale().y < 0.3)
-            {
-                exitButton.setScale(exitButton.getScale().x + playerdeltatime * 2, exitButton.getScale().x + playerdeltatime * 2);
-            }
-        }
-        else
-        {
-            if (exitButton.getScale().x > 0.2 && exitButton.getScale().y > 0.2)
-            {
-                exitButton.setScale(exitButton.getScale().x - playerdeltatime * 2, exitButton.getScale().x - playerdeltatime * 2);
-            }
-        }
-        window.draw(winningText);
+        Dialogue();
     }
     if (menu_num == 0)
     {
@@ -4452,7 +4562,7 @@ void UI()
     {
         //BossFight HealthBar
         RectangleShape Boss_health_bar(Vector2f(300, 10));
-        Boss_health_bar.setScale(Vector2f((BossHealth / 3000.0) * 2, 2));
+        Boss_health_bar.setScale(Vector2f((BossHealth / 6000.0) * 2, 2));
         Boss_health_bar.setPosition(window.mapPixelToCoords(Vector2i(480, 150)));
         Boss_health_bar.setFillColor(Color(136, 8, 8));
         RectangleShape Boss_missing_health_bar(Vector2f(300, 10));
@@ -4544,6 +4654,8 @@ void UI()
     //end draw guns 
     slow_ability.setPosition(window.mapPixelToCoords(Vector2i(1200, 50)));
     MiniGun_ability.setPosition(window.mapPixelToCoords(Vector2i(1200, 50)));
+    Turret_ability.setOrigin(Turret_ability.getLocalBounds().width / 2, Turret_ability.getLocalBounds().height / 2);
+    Turret_ability.setPosition(window.mapPixelToCoords(Vector2i(960, 100)));
     if (Slowready && current_level == 2)
     {
         window.draw(slow_ability);
@@ -4551,6 +4663,10 @@ void UI()
     if (isMinigunReady && current_level == 3)
     {
         window.draw(MiniGun_ability);
+    }
+    if (isTurretReady && current_level == 4)
+    {
+        window.draw(Turret_ability);
     }
     SpeedCola_S.setPosition(window.mapPixelToCoords(Vector2i(50, 75)));
     StaminaUp_S.setPosition(window.mapPixelToCoords(Vector2i(75+SpeedCola_S.getGlobalBounds().width, 75)));
@@ -4606,10 +4722,67 @@ void buying_weapons()
     }
 }
 
+//Dialogue Function
+void Dialogue()
+{
+    DialogueCounter += playerdeltatime;
+    Current_D_Text.setFont(normal_font);
+    Current_D_Text.setCharacterSize(36);
+    //Current_D_Text.setOrigin(Current_D_Text.getLocalBounds().width / 2, Current_D_Text.getLocalBounds().height / 2);
+    Current_D_Text.setPosition(window.mapPixelToCoords(Vector2i(200, 850)));
+    DialogueBox.setOrigin(DialogueBox.getLocalBounds().width / 2, DialogueBox.getLocalBounds().height / 2);
+    DialogueBox.setPosition(window.mapPixelToCoords(Vector2i(960, 936)));
+
+    if (Keyboard::isKeyPressed(Keyboard::Space) && current_dialogue <3 && finishedCurrentDialogue)
+    {
+        DisplayedString.clear();
+        finishedCurrentDialogue = false;
+        current_dialogue++;
+        letterindex = 0;
+        DialogueCounter = 0;
+    }
+    else if (Keyboard::isKeyPressed(Keyboard::Space) && current_dialogue >= 3)
+    {
+        IsDialogueActive = false;
+        //start game
+    }
+
+    switch (current_dialogue)
+    {
+    case 0:
+        Current_String = Boss_D_Intro;
+        view.setCenter(Boss.getPosition());
+        break;
+    case 1:
+        Current_String = Player_D_Intro;
+        view.setCenter(Player.getPosition());
+        break;
+    case 2:
+        Current_String = Boss_D_Outro;
+        view.setCenter(Boss.getPosition());
+        break;
+    }
+    if (DialogueCounter > DialogueSpeed && letterindex < Current_String.size())
+    {
+        DisplayedString += Current_String[letterindex];
+        Current_D_Text.setString(DisplayedString);
+        letterindex++;
+        DialogueCounter = 0;
+    }
+    else if (letterindex >= Current_String.size() && !finishedCurrentDialogue)
+    {
+        DisplayedString += "\n -Press Space";
+        Current_D_Text.setString(DisplayedString);
+        finishedCurrentDialogue = true;
+    }
+    window.draw(DialogueBox);
+    window.draw(Current_D_Text);
+}
+
 //Menu Functions
 void StartNewGame()
 {
-    current_level = 1;
+    current_level = 3;
     SwtichCurrentWallBounds();
     Player.setPosition(900, 300);
     Player_Health = 100;
@@ -4640,8 +4813,8 @@ void StartNewGame()
     MusicPlayer.play();
     BossDone = false;
     IsBossDead = false;
-    BossHealth = 3000;
-    Ability_Ready = true;
+    BossHealth = 6000;
+    Ability_Ready = false;
     isCasting = false;
     IsBlind = false;
     LockingIn = false;
@@ -4652,10 +4825,15 @@ void StartNewGame()
     shotgunbulletsloaded = 8;
     sniperbulletsloaded = 5;
     rocketbulletsloaded = 1;
-    rifleammostock = 60;
-    shotgunammostock = 8;
+    rifleammostock = 120;
+    shotgunammostock = 24;
     sniperammostock = 5;
     rocketammostock = 1;
+    IsDialogueActive = false;
+    finishedCurrentDialogue = false;
+    DialogueCounter = 0;
+    letterindex = 0;
+    current_dialogue = 0;
     MusicPlayer.stop();
     music_trigger = false;
 }
@@ -4706,6 +4884,8 @@ void game_openning_menu()
     }
     exitButton.setPosition(globalcenter.x - 500, globalcenter.y + 200); FloatRect collesion3 = exitButton.getGlobalBounds();
     exitButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    exitButton.setColor(Color(exitButton.getColor().r, exitButton.getColor().g, exitButton.getColor().b, 255));
+
     window.draw(exitButton);
     if (collesion3.contains(MousePos))
     {
@@ -4796,6 +4976,9 @@ void Exit()
     {
         if (Mouse::isButtonPressed(Mouse::Left))
         {
+            ofstream outf("savegame.txt");
+            outf << highest_score;
+            outf.close();
             window.close();
         }
         if (yesButton.getScale().x < 0.3 && yesButton.getScale().y < 0.3)
@@ -4845,9 +5028,7 @@ void Pause()
         {
             if (Score > highest_score)
             {
-                ofstream outf("savegame.txt");
-                outf << Score << endl;
-                outf.close();
+                highest_score = Score;
             }
             menu_num = 1;
             MusicPlayer.setBuffer(music[3]);
@@ -4930,12 +5111,6 @@ void Game_over()
             {
                 highest_score = Score;
             }
-            ofstream outf("savegame.txt");
-            outf << 1 << endl;
-            outf << 100 << endl;
-            outf << 0 << endl;
-            outf << highest_score;
-            outf.close();
             EffectsPlayer.stop();
             menu_num = 1;
             MusicPlayer.setBuffer(music[3]);
