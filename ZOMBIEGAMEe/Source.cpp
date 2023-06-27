@@ -1790,11 +1790,11 @@ void Player_Collision()
     }
     if (CurrentVolume > 20 && IsBlind)
     {
-        CurrentVolume -= playerdeltatime * 10;
+        CurrentVolume -= playerdeltatime * 50;
     }
     if (CurrentVolume < 80 && !IsBlind)
     {
-        CurrentVolume += playerdeltatime * 10;
+        CurrentVolume += playerdeltatime * 50;
     }
     if (ambientlight.getAreaOpacity() < 0.98 && IsBlind)
     {
@@ -2597,7 +2597,12 @@ void Bullet_Movement_Collision(float dt)
     {
         for (int j = 0; j < Enemies.size(); j++)
         {
-            if (!bullets[i].IsFireBall && bullets[i].shape.getGlobalBounds().intersects(Enemies[j]->shape.getGlobalBounds()) && Enemies[j]->last_hit_bullet_id != bullets[i].id && !Enemies[j]->isdeath)
+            FloatRect current_zombie_Bound = Enemies[j]->shape.getGlobalBounds();
+            if (Enemies[j]->type == 2)
+            {
+                current_zombie_Bound = FloatRect(current_zombie_Bound.left + 100, current_zombie_Bound.top, current_zombie_Bound.width - 200, current_zombie_Bound.height);
+            }
+            if (!bullets[i].IsFireBall && bullets[i].shape.getGlobalBounds().intersects(current_zombie_Bound) && Enemies[j]->last_hit_bullet_id != bullets[i].id && !Enemies[j]->isdeath)
             {
                 Enemies[j]->last_hit_bullet_id = bullets[i].id;
                 if (bullets[i].isRocket)
@@ -2933,7 +2938,11 @@ void HandleZombieBehaviour(float dt)
         }
         for (int j = 0; j < Wall_Bounds.size(); j++)
         {
-            FloatRect current_zombie_Bound = Enemies[i]->shape.getGlobalBounds();
+            FloatRect current_zombie_Bound =Enemies[i]->shape.getGlobalBounds();
+            if (Enemies[i]->type == 2)
+            {
+                current_zombie_Bound = FloatRect(current_zombie_Bound.left, current_zombie_Bound.top, current_zombie_Bound.width - 50, current_zombie_Bound.height);
+            }
             FloatRect intersection;
             FloatRect Wall_bound = Wall_Bounds[j];
             if (current_zombie_Bound.intersects(Wall_bound))
@@ -2965,9 +2974,7 @@ void HandleZombieBehaviour(float dt)
         }
         for (int j = 0; j < Enemies.size(); j++)
         {
-            if (Enemies[j]->type !=2)
-            {
-                if (i == j)
+                if (i == j || Enemies[j]->type == 2)
                 {
                     continue;
                 }
@@ -3001,7 +3008,7 @@ void HandleZombieBehaviour(float dt)
                         }
                     }
                 }
-            }         
+                    
         }
     }
   
@@ -4082,10 +4089,13 @@ void Draw()
         WeaponsBuyDrawing();
     }
     window.draw(Player);
-    light.setRange(200);
-    light.setPosition(Player.getPosition());
-    window.draw(light);
-    ambientlight.draw(light);
+    if (current_level ==4)
+    {
+        light.setRange(200);
+        light.setPosition(Player.getPosition());
+        window.draw(light);
+        ambientlight.draw(light);
+    }
 
     if (!BossDone && current_level == 4)
     {
