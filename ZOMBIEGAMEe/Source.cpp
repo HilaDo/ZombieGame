@@ -2870,7 +2870,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 1 * Current_Wave1)
+    if (TotalSpawnedZombies >= 25 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -2965,40 +2965,43 @@ void HandleZombieBehaviour(float dt)
         }
         for (int j = 0; j < Enemies.size(); j++)
         {
-            if (i == j)
+            if (Enemies[j]->type !=2)
             {
-                continue;
-            }
-            FloatRect Current_Zombie_Bound = Enemies[i]->shape.getGlobalBounds();
-            FloatRect intersection;
-            FloatRect Current_other_zombie_bound = Enemies[j]->shape.getGlobalBounds();
-            if (Current_Zombie_Bound.intersects(Current_other_zombie_bound))
-            {
+                if (i == j)
+                {
+                    continue;
+                }
+                FloatRect Current_Zombie_Bound = Enemies[i]->shape.getGlobalBounds();
+                FloatRect intersection;
+                FloatRect Current_other_zombie_bound = Enemies[j]->shape.getGlobalBounds();
+                if (Current_Zombie_Bound.intersects(Current_other_zombie_bound))
+                {
 
-                Current_Zombie_Bound.intersects(Current_other_zombie_bound, intersection);
-                if (intersection.width < intersection.height)
-                {
-                    if (Current_Zombie_Bound.left < Current_other_zombie_bound.left)
+                    Current_Zombie_Bound.intersects(Current_other_zombie_bound, intersection);
+                    if (intersection.width < intersection.height)
                     {
-                        Enemies[i]->shape.move(-50 * dt, 0);
+                        if (Current_Zombie_Bound.left < Current_other_zombie_bound.left)
+                        {
+                            Enemies[i]->shape.move(-50 * dt, 0);
+                        }
+                        else
+                        {
+                            Enemies[i]->shape.move(50 * dt, 0);
+                        }
                     }
                     else
                     {
-                        Enemies[i]->shape.move(50 * dt, 0);
+                        if (Current_Zombie_Bound.top < Current_other_zombie_bound.top)
+                        {
+                            Enemies[i]->shape.move(0, -50 * dt);
+                        }
+                        else
+                        {
+                            Enemies[i]->shape.move(0, 50 * dt);
+                        }
                     }
                 }
-                else
-                {
-                    if (Current_Zombie_Bound.top < Current_other_zombie_bound.top)
-                    {
-                        Enemies[i]->shape.move(0, -50 * dt);
-                    }
-                    else
-                    {
-                        Enemies[i]->shape.move(0, 50 * dt);
-                    }
-                }
-            }
+            }         
         }
     }
   
