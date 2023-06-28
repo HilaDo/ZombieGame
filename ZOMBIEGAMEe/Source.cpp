@@ -2886,7 +2886,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 1 * Current_Wave1)
+    if (TotalSpawnedZombies >= 25 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -4817,7 +4817,7 @@ void StartNewGame()
 {
     Player.setScale(0.1, 0.1);
     Boss.setScale(0.1, 0.1);
-    current_level = 3;
+    current_level = 1;
     SwtichCurrentWallBounds();
     Player.setPosition(900, 300);
     Player_Health = 100;
@@ -4843,7 +4843,7 @@ void StartNewGame()
     muzzleEffects.clear();
     LaserBeams.clear();
     Curr_Gun_state = Pistol;
-    Current_Wave1 = 4;
+    Current_Wave1 = 0;
     MusicPlayer.stop();
     current_song = 0;
     MusicPlayer.play();
