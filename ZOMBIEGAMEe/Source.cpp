@@ -114,7 +114,7 @@ enum Gun_State
 Gun_State Curr_Gun_state = Gun_State::Pistol;
 enum Boss_State
 {
-    Walk, Death, LaserAtk, BlindAtk, BulletAtk
+    Idle,Walk, Death, LaserAtk, BlindAtk, BulletAtk
 };
 Boss_State Curr_Boss_State = Boss_State::Walk;
 struct Trail
@@ -1183,6 +1183,7 @@ float ability_counter = 0;
 float Abilities_freq = 2;
 bool Ability_Ready = true;
 bool IsBossDead = false;
+Texture Boss_idle_animation[8];
 Texture Boss_walk_animation[8];
 Texture Boss_LaserAtk_animation[13];
 Texture Boss_BulletsAtk_animation[13];
@@ -1311,7 +1312,7 @@ void GetTextures()
     laserTex.loadFromFile("Beam.png");
     DialogueBox_T.loadFromFile("DialogueBox.png");
     DialogueBox.setTexture(DialogueBox_T);
-    DialogueBox.setScale(0.9, 0.5);
+    DialogueBox.setScale(0.9, 0.4);
     for (int i = 0; i < 8; i++)
     {
         WalkAnimation[i].loadFromFile("anim by rows/walk/tile" + std::to_string(i) + ".png");
@@ -1423,6 +1424,10 @@ void GetTextures()
     }
     for (int i = 0; i < 8; i++)
     {
+        Boss_idle_animation[i].loadFromFile("Boss/idle/tile (" + std::to_string(i + 1) + ").png");
+    }
+    for (int i = 0; i < 8; i++)
+    {
         Boss_walk_animation[i].loadFromFile("Boss/walk/tile (" + std::to_string(i + 1) + ").png");
     }
     for (int i = 0; i < 13; i++)
@@ -1462,7 +1467,7 @@ void GetTextures()
     speedmachine.setTexture(speedmachine_photo);
     reloadmachine.setTexture(reloadmachine_photo);
     //ui
-    normal_font.loadFromFile("Okami.otf");
+    normal_font.loadFromFile("Vermin Vibes 1989.ttf");
     ammo_smg_photo.loadFromFile("ammo_smg.png");
     money_photo.loadFromFile("money.png");
     pistol_photo.loadFromFile("pistol.png");
@@ -1584,9 +1589,10 @@ void GetTextures()
 //update function
 void Update(float dt)
 {
-
-    Switch_States();
-    
+    if (menu_num == 0 || menu_num == 6)
+    {
+        Switch_States();
+    }
     if (curr_state != state::death)
     {  
         current_player_pos = DashOrigin.getPosition();
@@ -1888,6 +1894,7 @@ void Player_Collision()
             Player.setScale(2,2);
             MovementDirection = Vector2f(0, 0);
             Player.setPosition(760, 960);
+            Curr_Boss_State = Walk;
             Boss.setPosition(960, 900);
             Boss.setScale(-2, 2);
             IsDialogueActive = true;
@@ -1964,6 +1971,10 @@ void Switch_States()
     if (ishit)
     {
         curr_state = state::hit;
+    }
+    if (menu_num != 0 && menu_num != 6 && menu_num != 5 )
+    {
+        curr_state = idle;
     }
     switch (curr_state)
     {
@@ -2875,7 +2886,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 25 * Current_Wave1)
+    if (TotalSpawnedZombies >= 1 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -3118,6 +3129,10 @@ void BossAnimationHandler()
 {
     switch (Curr_Boss_State)
     {
+    case Idle:
+        BossAnimationCounter(8, false);
+        Boss.setTexture(Boss_idle_animation[Boss_image_counter]);
+        break;
     case Walk:
         BossAnimationCounter(8, false);
         Boss.setTexture(Boss_walk_animation[Boss_image_counter]);
@@ -4507,7 +4522,7 @@ void Combo()
     ComboText.setCharacterSize(26);
     ComboText.setFillColor(Color::White);
     ComboText.setOrigin(ComboText.getLocalBounds().width / 2, ComboText.getLocalBounds().height / 2);
-    ComboText.setPosition(EnemiesKilledText.getPosition().x, EnemiesKilledText.getPosition().y + 50);
+    ComboText.setPosition(EnemiesKilledText.getPosition().x, EnemiesKilledText.getPosition().y + 70);
     if (EnemiesKilledWithoutHit % 10 == 0 && EnemiesKilledWithoutHit != 0 && EnemiesKilledWithoutHit != previouskilledenemiescombo && !isComboAnimation)
     {
         previouskilledenemiescombo = EnemiesKilledWithoutHit;
@@ -4600,7 +4615,7 @@ void UI()
         // to print  current wave  
 
         current_wave.setFont(normal_font);
-        current_wave.setString(" CurreNT Wave\n\t\t   " + to_string(Current_Wave1));
+        current_wave.setString(" CurreNT Wave\n\t\t     " + to_string(Current_Wave1));
         current_wave.setCharacterSize(42);
         current_wave.setFillColor(Color(136, 8, 8));
         current_wave.setOrigin(current_wave.getLocalBounds().width / 2, current_wave.getLocalBounds().height / 2);
@@ -4662,7 +4677,7 @@ void UI()
     {
         ammo_stock_text.setString(" /" + to_string(*current_ammo_stock));
     }
-    ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(1820, 980)));
+    ammo_stock_text.setPosition(window.mapPixelToCoords(Vector2i(1800, 980)));
     ammo_stock_text.setCharacterSize(36);
     ammo_stock_text.setFillColor(Color::White);
     if (Curr_Gun_state != MiniGun)
@@ -4746,8 +4761,8 @@ void Dialogue()
 {
     DialogueCounter += playerdeltatime;
     Current_D_Text.setFont(normal_font);
-    Current_D_Text.setCharacterSize(36);
-    Current_D_Text.setPosition(window.mapPixelToCoords(Vector2i(200, 850)));
+    Current_D_Text.setCharacterSize(32);
+    Current_D_Text.setPosition(window.mapPixelToCoords(Vector2i(100, 850)));
     DialogueBox.setOrigin(DialogueBox.getLocalBounds().width / 2, DialogueBox.getLocalBounds().height / 2);
     DialogueBox.setPosition(window.mapPixelToCoords(Vector2i(960, 936)));
 
@@ -4800,7 +4815,9 @@ void Dialogue()
 //Menu Functions
 void StartNewGame()
 {
-    current_level = 1;
+    Player.setScale(0.1, 0.1);
+    Boss.setScale(0.1, 0.1);
+    current_level = 3;
     SwtichCurrentWallBounds();
     Player.setPosition(900, 300);
     Player_Health = 100;
@@ -4826,7 +4843,7 @@ void StartNewGame()
     muzzleEffects.clear();
     LaserBeams.clear();
     Curr_Gun_state = Pistol;
-    Current_Wave1 = 0;
+    Current_Wave1 = 4;
     MusicPlayer.stop();
     current_song = 0;
     MusicPlayer.play();
@@ -4859,8 +4876,8 @@ void StartNewGame()
 
 void game_openning_menu()
 {
-    PlayButton.setPosition(globalcenter.x - 500 , globalcenter.y - 100); FloatRect collesion1 = PlayButton.getGlobalBounds();
     PlayButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    PlayButton.setPosition(globalcenter.x, globalcenter.y - 100); FloatRect collesion1 = PlayButton.getGlobalBounds();
     window.draw(PlayButton);
     if (collesion1.contains(MousePos))
     {
@@ -4880,8 +4897,8 @@ void game_openning_menu()
             PlayButton.setScale(PlayButton.getScale().x - playerdeltatime * 2, PlayButton.getScale().x - playerdeltatime *2);
         }
     }
-    creditsButton.setPosition(globalcenter.x - 500, globalcenter.y); FloatRect collesion2 = creditsButton.getGlobalBounds();
-    creditsButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    creditsButton.setOrigin(creditsButton.getLocalBounds().width / 2, creditsButton.getLocalBounds().height / 2);
+    creditsButton.setPosition(globalcenter.x, globalcenter.y + 100); FloatRect collesion2 = creditsButton.getGlobalBounds();
     window.draw(creditsButton);
     if (collesion2.contains(MousePos))
     {
@@ -4901,10 +4918,9 @@ void game_openning_menu()
             creditsButton.setScale(creditsButton.getScale().x - playerdeltatime * 2, creditsButton.getScale().x - playerdeltatime * 2);
         }
     }
-    exitButton.setPosition(globalcenter.x - 500, globalcenter.y + 200); FloatRect collesion3 = exitButton.getGlobalBounds();
-    exitButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
-    exitButton.setColor(Color(exitButton.getColor().r, exitButton.getColor().g, exitButton.getColor().b, 255));
-
+    exitButton.setOrigin(exitButton.getLocalBounds().width / 2, exitButton.getLocalBounds().height / 2);
+    exitButton.setColor(Color(0, 0, 0, 255));
+    exitButton.setPosition(globalcenter.x, globalcenter.y + 200); FloatRect collesion3 = exitButton.getGlobalBounds();
     window.draw(exitButton);
     if (collesion3.contains(MousePos))
     {
@@ -4926,8 +4942,8 @@ void game_openning_menu()
     }
 
 
-    controlsButton.setPosition(globalcenter.x - 500, globalcenter.y + 100); FloatRect collesion4 = controlsButton.getGlobalBounds();
-    controlsButton.setOrigin(PlayButton.getLocalBounds().width / 2, PlayButton.getLocalBounds().height / 2);
+    controlsButton.setOrigin(controlsButton.getLocalBounds().width / 2, controlsButton.getLocalBounds().height / 2);
+    controlsButton.setPosition(globalcenter.x, globalcenter.y); FloatRect collesion4 = controlsButton.getGlobalBounds();
     window.draw(controlsButton);
     if (collesion4.contains(MousePos))
     {
@@ -4951,20 +4967,20 @@ void game_openning_menu()
 
 void Credits(Font font)
 {
-    Text first; first.setFont(font); first.setString("Abdullah Sheriff"); first.setFillColor(Color(225, 225, 225, 225)); first.setPosition(globalcenter.x - 300, globalcenter.y - 150); first.setCharacterSize(32); window.draw(first);
-    Text second; second.setFont(font); second.setString("Abdelrahman Ahmed Saber"); second.setFillColor(Color(225, 225, 225, 225)); second.setPosition(globalcenter.x - 300, globalcenter.y - 100); second.setCharacterSize(32); window.draw(second);
-    Text third; third.setFont(font); third.setString("Abdelrahman Ahmed Ezzat"); third.setFillColor(Color(225, 225, 225, 225)); third.setPosition(globalcenter.x - 300, globalcenter.y - 50); third.setCharacterSize(32); window.draw(third);
-    Text fourth; fourth.setFont(font); fourth.setString("Abdelrahman Tamer Mohamed"); fourth.setFillColor(Color(225, 225, 225, 225)); fourth.setPosition(globalcenter.x - 300, globalcenter.y); fourth.setCharacterSize(32); window.draw(fourth);
-    Text fifth; fifth.setFont(font); fifth.setString("Shahd Hani"); fifth.setFillColor(Color(225, 225, 225, 225)); fifth.setPosition(globalcenter.x - 300, globalcenter.y +50); fifth.setCharacterSize(32); window.draw(fifth);
-    Text sixth; sixth.setFont(font); sixth.setString("Mohamed Magdy"); sixth.setFillColor(Color(225, 225, 225, 225)); sixth.setPosition(globalcenter.x - 300, globalcenter.y + 100); sixth.setCharacterSize(32); window.draw(sixth);
+    Text first; first.setFont(font); first.setString("Abdullah Sheriff"); first.setFillColor(Color(225, 225, 225, 225)); first.setPosition(globalcenter.x - 150, globalcenter.y - 150); first.setCharacterSize(32); window.draw(first);
+    Text second; second.setFont(font); second.setString("Abdelrahman Ahmed Saber"); second.setFillColor(Color(225, 225, 225, 225)); second.setPosition(globalcenter.x - 150, globalcenter.y - 100); second.setCharacterSize(32); window.draw(second);
+    Text third; third.setFont(font); third.setString("Abdelrahman Ahmed Ezzat"); third.setFillColor(Color(225, 225, 225, 225)); third.setPosition(globalcenter.x - 150, globalcenter.y - 50); third.setCharacterSize(32); window.draw(third);
+    Text fourth; fourth.setFont(font); fourth.setString("Abdelrahman Tamer Mohamed"); fourth.setFillColor(Color(225, 225, 225, 225)); fourth.setPosition(globalcenter.x - 150, globalcenter.y); fourth.setCharacterSize(32); window.draw(fourth);
+    Text fifth; fifth.setFont(font); fifth.setString("Shahd Hani"); fifth.setFillColor(Color(225, 225, 225, 225)); fifth.setPosition(globalcenter.x - 150, globalcenter.y +50); fifth.setCharacterSize(32); window.draw(fifth);
+    Text sixth; sixth.setFont(font); sixth.setString("Mohamed Magdy"); sixth.setFillColor(Color(225, 225, 225, 225)); sixth.setPosition(globalcenter.x - 150, globalcenter.y + 100); sixth.setCharacterSize(32); window.draw(sixth);
 }
 
 void Exit()
 {
     escapeButton.setOrigin(escapeButton.getLocalBounds().width / 2, escapeButton.getLocalBounds().height / 2);
-    escapeButton.setPosition(globalcenter.x, globalcenter.y - 150);window.draw(escapeButton);
+    escapeButton.setPosition(globalcenter.x, globalcenter.y - 50);window.draw(escapeButton);
 
-    noButton.setPosition(globalcenter.x - 150, globalcenter.y - 50); FloatRect collesion1 = noButton.getGlobalBounds();
+    noButton.setPosition(globalcenter.x - 150, globalcenter.y + 100); FloatRect collesion1 = noButton.getGlobalBounds();
     noButton.setOrigin(noButton.getLocalBounds().width / 2, noButton.getLocalBounds().height / 2);
 
     window.draw(noButton);
@@ -4987,7 +5003,7 @@ void Exit()
         }
     }
 
-    yesButton.setPosition(globalcenter.x + 150, globalcenter.y - 50); FloatRect collesion2 = yesButton.getGlobalBounds();
+    yesButton.setPosition(globalcenter.x + 150, globalcenter.y + 100); FloatRect collesion2 = yesButton.getGlobalBounds();
     yesButton.setOrigin(yesButton.getLocalBounds().width / 2, yesButton.getLocalBounds().height / 2);
 
     window.draw(yesButton);
@@ -5019,6 +5035,7 @@ void Pause()
 
     resumeButton.setPosition(globalcenter.x + 250, globalcenter.y); FloatRect collesion1 = resumeButton.getGlobalBounds();
     resumeButton.setOrigin(resumeButton.getLocalBounds().width / 2, resumeButton.getLocalBounds().height / 2);
+    resumeButton.setColor(Color(143, 0, 14));
     window.draw(resumeButton);
     if (collesion1.contains(MousePos))
     {
@@ -5040,6 +5057,7 @@ void Pause()
     }
     exitButton.setPosition(globalcenter.x - 250, globalcenter.y); FloatRect collesion2 = exitButton.getGlobalBounds();
     exitButton.setOrigin(exitButton.getLocalBounds().width / 2, exitButton.getLocalBounds().height / 2);
+    exitButton.setColor(Color(136, 8, 8, 255));
     window.draw(exitButton);
     if (collesion2.contains(MousePos))
     {
@@ -5109,7 +5127,21 @@ void Menu_Background()
         menu_background.setPosition(globalcenter.x - (960 * 0.65), globalcenter.y - (540 * 0.65));
         window.draw(menu_background);
         Text high_score; high_score.setFont(normal_font); high_score.setString(" high score : " + to_string(highest_score)); high_score.setFillColor(Color(225, 225, 225, 225)); high_score.setPosition(globalcenter.x + 300, globalcenter.y - 310); high_score.setCharacterSize(32); window.draw(high_score);
-
+        MovementDirection = Vector2f(0, 0);
+        curr_state = idle;
+        Switch_States();
+        Player.setOrigin(Player.getLocalBounds().width / 2, Player.getLocalBounds().height / 2);
+        Player.setPosition(globalcenter.x - 450, globalcenter.y);
+        Player.setScale(0.5, 0.5);
+        Player.setScale(10, 10);
+        window.draw(Player);
+        Curr_Boss_State = Idle;
+        BossAnimationHandler();
+        Boss.setOrigin(Boss.getLocalBounds().width / 2, Boss.getLocalBounds().height / 2);
+        Boss.setPosition(globalcenter.x + 400, globalcenter.y);
+        Boss.setScale(0.5, 0.5);
+        Boss.setScale(10, 10);
+        window.draw(Boss);
     }
 
 }
@@ -5120,7 +5152,7 @@ void Game_over()
     overButton.setOrigin(overButton.getLocalBounds().width / 2, overButton.getLocalBounds().height / 2);
     overButton.setPosition(globalcenter.x, globalcenter.y - 100);window.draw(overButton);
     backButton.setOrigin(backButton.getLocalBounds().width / 2, backButton.getLocalBounds().height / 2);
-    backButton.setPosition(globalcenter.x, globalcenter.y); FloatRect collesion2 = backButton.getGlobalBounds();
+    backButton.setPosition(globalcenter.x, globalcenter.y + 50); FloatRect collesion2 = backButton.getGlobalBounds();
     window.draw(backButton);
     if (collesion2.contains(MousePos))
     {
@@ -5135,6 +5167,7 @@ void Game_over()
             MusicPlayer.setBuffer(music[3]);
             MusicPlayer.play();
             music_trigger = false;
+            Player_Health = 100;
         }
         if (backButton.getScale().x < 0.3 && backButton.getScale().y < 0.3)
         {
