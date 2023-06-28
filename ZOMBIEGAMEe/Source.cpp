@@ -826,7 +826,6 @@ Text money_shotgun_text;
 Text money_Rocket_text;
 Text speedmachine_text;
 Text reloadmachine_text;
-Text Gun_controls;
 //all sprites in the game
 Sprite Player;
 RectangleShape Gun(Vector2f(1.f,1.f));
@@ -1528,9 +1527,9 @@ void GetTextures()
     StaminaUp_T.loadFromFile("StaminUp.png");
 
     SpeedCola_S.setTexture(SpeedCola_T);
-    SpeedCola_S.setScale(0.05, 0.05);
+    SpeedCola_S.setScale(0.1, 0.1);
     StaminaUp_S.setTexture(StaminaUp_T);
-    StaminaUp_S.setScale(0.05,0.05);
+    StaminaUp_S.setScale(0.1,0.1);
     //menu
     Menu_background.loadFromFile("MenuAndUi/GameBackground.png");
     menu_background.setTexture(Menu_background);
@@ -4712,12 +4711,6 @@ void UI()
     {
         window.draw(SpeedCola_S);
     }
-    Gun_controls.setFont(normal_font); // select the font 
-    Gun_controls.setString("1:Pistol,2:Rifle,3:ShotGun,4:Sniper");
-    Gun_controls.setCharacterSize(18);
-    Gun_controls.setFillColor(Color::White);
-    Gun_controls.setPosition(window.mapPixelToCoords(Vector2i(1400, 0)));
-    window.draw(Gun_controls);
 
 }
 void buying_weapons()
