@@ -245,7 +245,7 @@ struct Enemy
     int Spawn_imagecounter = 0;
     int health = 75;
     Vector2f norm_Direction;
-    virtual void EnemyBehaviour(Texture hit_anim[], Texture atk_anim[], Texture walk_anim[], Texture death_anim[], bool dashing, float dt, Vector2f player_pos, Vector2f Boss_pos) {}
+    virtual void EnemyBehaviour(Texture hit_anim[], Texture atk_anim[], Texture walk_anim[], Texture death_anim[], bool dashing, float dt, Vector2f player_pos, Vector2f Boss_pos,bool slowing) {}
     void SetSpawnLocation()
     {
         SpawnEffect.setPosition(shape.getPosition());
@@ -314,7 +314,7 @@ struct Zombie : public Enemy
     int maxwalkframes = 8;
     int maxhitframes = 2;
     int maxdeathframes = 4;
-    void EnemyBehaviour(Texture hit_anim[],Texture atk_anim[],Texture walk_anim[],Texture death_anim[], bool dashing, float dt,Vector2f player_pos, Vector2f Boss_pos) override
+    void EnemyBehaviour(Texture hit_anim[],Texture atk_anim[],Texture walk_anim[],Texture death_anim[], bool dashing, float dt,Vector2f player_pos, Vector2f Boss_pos, bool slowing) override
     {
         if (isEnemyhit && !isdeath)
         {
@@ -352,7 +352,7 @@ struct Zombie : public Enemy
             float magnitude = sqrt(Direction.x * Direction.x + Direction.y * Direction.y);
             norm_Direction = Direction / magnitude;
             distance_from_player = magnitude;
-            if (distance_from_player <= attackdistance)
+            if (distance_from_player <= attackdistance && !slowing)
             {
                 isattacking = true;
                 shape.setTexture(atk_anim[imagecounter]);
@@ -476,9 +476,9 @@ void SpawnBlood(Enemy& enemy)
         }
         switch (enemy.type)
         {
-        case 0:Score += 25 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 75;  break;
-        case 1:Score += 50 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 100; break;
-        case 2:Score += 100 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 225; break;
+        case 0:Score += 25 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 85;  break;
+        case 1:Score += 50 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 120; break;
+        case 2:Score += 100 * (float(1 + floor(EnemiesKilledWithoutHit / 10.0f) / 10)); Money += 250; break;
         }
     }
 }
@@ -555,7 +555,7 @@ struct SkullFire : public Enemy
     int imagecounter = 0;
     float distance_from_player;
     bool atkready = false;
-    void EnemyBehaviour(Texture hit_anim[], Texture atk_anim[], Texture walk_anim[], Texture death_anim[], bool dashing, float dt, Vector2f player_pos,Vector2f Boss_pos) override
+    void EnemyBehaviour(Texture hit_anim[], Texture atk_anim[], Texture walk_anim[], Texture death_anim[], bool dashing, float dt, Vector2f player_pos,Vector2f Boss_pos,bool slowing) override
     {
         if (!isdeath)
         {          
@@ -591,7 +591,7 @@ struct SkullFire : public Enemy
                 currentvelocity = Vector2f(currentvelocity.x += -(currentvelocity.x / abs(currentvelocity.x)) * dt * 500, currentvelocity.y += -(currentvelocity.y / abs(currentvelocity.y)) * dt * 500);
             }
             shape.move(Vector2f(currentvelocity.x * norm_Direction.x * dt, currentvelocity.y * norm_Direction.y * dt));
-            if (magnitude <= 75 &&atkready)
+            if (magnitude <= 75 &&atkready && !slowing)
             {
                 isdeath = true;
             }
@@ -1678,6 +1678,18 @@ void MusicHandler()
         {
             current_song = 4;
         }
+        else if (current_level == 3)
+        {
+            current_song = 2;
+        }
+        else if (current_level == 2)
+        {
+            current_song = 1;
+        }
+        else if (current_level == 1)
+        {
+            current_song = 0;
+        }
         MusicPlayer.setBuffer(music[current_song]);
         MusicPlayer.play();
         music_trigger = true;
@@ -1888,6 +1900,8 @@ void Player_Collision()
         SwtichCurrentWallBounds();
         PortalOpen = false;
         Player_Health = 100;
+        MusicPlayer.stop();
+        music_trigger = false;
         if (current_level ==4)
         {
             Player.setScale(2,2);
@@ -1916,9 +1930,6 @@ void Player_Collision()
             shotgunammostock = 24;
             sniperammostock = 15;
             rocketammostock = 2;
-
-            MusicPlayer.stop();
-            music_trigger = false;
         }
         else
         {
@@ -1979,7 +1990,7 @@ void Switch_States()
     {
     case state::walk: UpdateAnimationCounter(8, false); Player.setTexture(WalkAnimation[ImageCounter]); break;
     case state::idle: UpdateAnimationCounter(6, false); Player.setTexture(IdleAnimation[ImageCounter]); break;
-    case state::death: UpdateAnimationCounter(6, true); Player.setTexture(DeathAnimation[ImageCounter]); break;
+    case state::death:Player.setTexture(DeathAnimation[6]); break;
     case state::hit: UpdateAnimationCounter(4, true); Player.setTexture(HitAnimation[ImageCounter]); break;
     }
 }
@@ -2921,13 +2932,13 @@ void HandleZombieBehaviour(float dt)
         switch (Enemies[i]->type)
         {
         case 0:
-            Enemies[i]->EnemyBehaviour(zombie_hit_animation, zombie_atk_animation, zombie_walk_animation, zombie_death_animation, isdashing,dt, Player.getPosition(),Boss.getPosition());
+            Enemies[i]->EnemyBehaviour(zombie_hit_animation, zombie_atk_animation, zombie_walk_animation, zombie_death_animation, isdashing,dt, Player.getPosition(),Boss.getPosition(),isSlowing);
             break;
         case 1:
-            Enemies[i]->EnemyBehaviour(zombie_hit_animation, zombie_atk_animation, SkullFire_animations, zombie_death_animation, isdashing,dt, Player.getPosition(), Boss.getPosition());
+            Enemies[i]->EnemyBehaviour(zombie_hit_animation, zombie_atk_animation, SkullFire_animations, zombie_death_animation, isdashing,dt, Player.getPosition(), Boss.getPosition(), isSlowing);
             break;
         case 2:
-            Enemies[i]->EnemyBehaviour(Golem_hit_animation, Golem_atk_animation, Golem_walk_animation, Golem_death_animation, isdashing, dt, Player.getPosition(), Boss.getPosition());
+            Enemies[i]->EnemyBehaviour(Golem_hit_animation, Golem_atk_animation, Golem_walk_animation, Golem_death_animation, isdashing, dt, Player.getPosition(), Boss.getPosition(), isSlowing);
             break;
         }
     }
@@ -2984,7 +2995,7 @@ void HandleZombieBehaviour(float dt)
         }
         for (int j = 0; j < Enemies.size(); j++)
         {
-                if (i == j || Enemies[j]->type == 2)
+                if (i == j || Enemies[j]->type == 2 || Enemies[i]-> type == 2)
                 {
                     continue;
                 }
@@ -4153,32 +4164,35 @@ void Draw()
             Enemies[i]->explosionArea.setPosition(Enemies[i]->shape.getPosition());
             window.draw(Enemies[i]->explosionArea);
         }
-        if(Enemies[i]->norm_Direction.x < 0)
+        if (!isSlowing)
         {
-            switch (Enemies[i]->type)
+            if (Enemies[i]->norm_Direction.x < 0)
             {
-            case 0:
-                Enemies[i]->shape.setScale(-2, 2);
-                break;
-            case 1:
-                Enemies[i]->shape.setScale(-1, 1);
-                break;
-            case 2:
-                Enemies[i]->shape.setScale(2, 2);
+                switch (Enemies[i]->type)
+                {
+                case 0:
+                    Enemies[i]->shape.setScale(-2, 2);
+                    break;
+                case 1:
+                    Enemies[i]->shape.setScale(-1, 1);
+                    break;
+                case 2:
+                    Enemies[i]->shape.setScale(2, 2);
+                }
             }
-        }
-        else
-        {
-            switch (Enemies[i]->type)
+            else
             {
-            case 0:
-                Enemies[i]->shape.setScale(2, 2);
-                break;
-            case 1:
-                Enemies[i]->shape.setScale(1, 1);
-                break;
-            case 2:
-                Enemies[i]->shape.setScale(-2, 2);
+                switch (Enemies[i]->type)
+                {
+                case 0:
+                    Enemies[i]->shape.setScale(2, 2);
+                    break;
+                case 1:
+                    Enemies[i]->shape.setScale(1, 1);
+                    break;
+                case 2:
+                    Enemies[i]->shape.setScale(-2, 2);
+                }
             }
         }
         window.draw(Enemies[i]->shape);
@@ -4349,7 +4363,7 @@ void Draw()
             light.setPosition(window.mapPixelToCoords(Vector2i(960, 800)));
             window.draw(light);
             ambientlight.draw(light);
-            exitButton.setPosition(window.mapPixelToCoords(Vector2i(960, 400))); FloatRect collesion2 = exitButton.getGlobalBounds();
+            exitButton.setPosition(globalcenter.x, globalcenter.y + 50); FloatRect collesion2 = exitButton.getGlobalBounds();
             exitButton.setOrigin(exitButton.getLocalBounds().width / 2, exitButton.getLocalBounds().height / 2);
             exitButton.setColor(Color(exitButton.getColor().r, exitButton.getColor().g, exitButton.getColor().b, winnerAlpha));
             window.draw(exitButton);
@@ -4361,6 +4375,8 @@ void Draw()
                     {
                         highest_score = Score;
                     }
+                    BossHealth = 6000;
+                    Curr_Boss_State = Idle;
                     EffectsPlayer.stop();
                     menu_num = 1;
                     MusicPlayer.setBuffer(music[3]);
