@@ -99,6 +99,8 @@ int minigunbulletsloaded = minigunclipsize;
 int rocketammostock = 15;
 int rocketbulletsloaded = rocketclipsize;
 
+int gun_frames = 24;
+
 using namespace sf;
 using namespace candle;
 
@@ -227,6 +229,7 @@ struct bullet
 bool ishit = false;
 SoundBuffer Rocket_Explosion_Sound;
 Sound ExplosionSound;
+int ImageCounter = 0;
 struct Enemy
 {
     Sprite shape;
@@ -301,7 +304,7 @@ struct Zombie : public Enemy
     int Death_imagecounter = 0;
 
     float Hit_animation_counter = 0;
-    float Hit_animation_duration = 0.20f;
+    float Hit_animation_duration = 0.30f;
     int Hit_imagecounter = 0;
 
 
@@ -311,7 +314,7 @@ struct Zombie : public Enemy
     bool isattacking = false;
     float damage = 6;
 
-    int maxwalkframes = 8;
+    int maxwalkframes = 7;
     int maxhitframes = 2;
     int maxdeathframes = 4;
     void EnemyBehaviour(Texture hit_anim[],Texture atk_anim[],Texture walk_anim[],Texture death_anim[], bool dashing, float dt,Vector2f player_pos, Vector2f Boss_pos, bool slowing) override
@@ -355,18 +358,21 @@ struct Zombie : public Enemy
             if (distance_from_player <= attackdistance && !slowing)
             {
                 isattacking = true;
+                maxwalkframes = 6;
                 shape.setTexture(atk_anim[imagecounter]);
                 if (atkready && !dashing)
                 {
                     Player_Health -= damage;
                     EnemiesKilledWithoutHit = 0;
+                    ImageCounter = 0;
                     ishit = true;
                     atkready = false;
                 }
                 currentvelocity = Vector2f(0, 0);
             }
-            else
+            else if(distance_from_player > attackdistance && !slowing && !isEnemyhit)
             {
+                maxwalkframes = 7;
                 shape.setTexture(walk_anim[imagecounter]);
             }
         }
@@ -596,7 +602,7 @@ struct SkullFire : public Enemy
                 isdeath = true;
             }
         }
-        else if (isdeath)
+        else if (isdeath && !slowing)
         {
             Explosion newexplosion;
             newexplosion.explosionlogic(shape.getPosition(), player_pos, Boss_pos, 250, rocket_radius, dashing);
@@ -1005,7 +1011,6 @@ float timesincedash = 0;
 //animation counter and time between each texture takes
 float AnimationCounter = 0;
 float AnimationSwitchTime = 0.1f;
-int ImageCounter = 0;
 int gun_image_counter = 0;
 float gun_Animation_Counter = 0;
 float gun_switch_delay_counter = 0;
@@ -1039,7 +1044,7 @@ Vector2f TurretShootDir;
 Vector2f TurretShootDir_norm;
 Vector2f turretShootPoint;
 float ClosestEnemyDistance = 100;
-float TurretBulletDamage = 20;
+float TurretBulletDamage = 7;
 float turretFireRateCounter = 0;
 float turretFireRate = 0.1;
 float turretAnimationCounter = 0;
@@ -1956,7 +1961,7 @@ void Player_Collision()
 }
 void Switch_States()
 {
-    if (MovementDirection.x < -0.1 || MovementDirection.x > 0.1 || MovementDirection.y < -0.1 || MovementDirection.y > 0.1)
+    if (Keyboard::isKeyPressed(Keyboard::A) || Keyboard::isKeyPressed(Keyboard::D) || Keyboard::isKeyPressed(Keyboard::S) || Keyboard::isKeyPressed(Keyboard::W))
     {
         curr_state = state::walk;
     }
@@ -1978,13 +1983,13 @@ void Switch_States()
         }
         curr_state = state::death;
     }
-    if (ishit)
-    {
-        curr_state = state::hit;
-    }
     if (menu_num != 0 && menu_num != 6 && menu_num != 5 )
     {
         curr_state = idle;
+    }
+    if (ishit)
+    {
+        curr_state = state::hit;
     }
     switch (curr_state)
     {
@@ -1996,16 +2001,6 @@ void Switch_States()
 }
 void UpdateAnimationCounter(int maximagecounter,bool isonce)
 {
-    if (isonce && finishedanimationonce)
-    {
-        if (curr_state == state::hit)
-        {
-            ishit = false;
-        }
-        curr_state = state::idle;
-        finishedanimationonce = false;
-        return;
-    }
     AnimationCounter += playerdeltatime;
     if (AnimationCounter >= AnimationSwitchTime)
     {
@@ -2013,6 +2008,11 @@ void UpdateAnimationCounter(int maximagecounter,bool isonce)
         ImageCounter++;
         if (ImageCounter >= maximagecounter)
         {
+            if (curr_state == hit)
+            {
+                ishit = false;
+                curr_state = idle;
+            }
             finishedanimationonce = true;
             ImageCounter = 0;
         }
@@ -2635,21 +2635,28 @@ void Bullet_Movement_Collision(float dt)
                 else
                 {
                     Enemies[j]->health -= bullets[i].damage;
-                    if (Curr_Gun_state == Shotgun)
+                    if (!bullets[i].Isturret)
                     {
-                        Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 35, Enemies[j]->currentvelocity.y + 35);
-                    }
-                    else if (Curr_Gun_state == Sniper)
-                    {
-                        Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 500, Enemies[j]->currentvelocity.y + 500);
-                    }
-                    else if (Curr_Gun_state == MiniGun)
-                    {
-                        Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 20, Enemies[j]->currentvelocity.y + 20);
+                        if (Curr_Gun_state == Shotgun)
+                        {
+                            Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 35, Enemies[j]->currentvelocity.y + 35);
+                        }
+                        else if (Curr_Gun_state == Sniper)
+                        {
+                            Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 500, Enemies[j]->currentvelocity.y + 500);
+                        }
+                        else if (Curr_Gun_state == MiniGun)
+                        {
+                            Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 20, Enemies[j]->currentvelocity.y + 20);
+                        }
+                        else
+                        {
+                            Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 100, Enemies[j]->currentvelocity.y + 100);
+                        }
                     }
                     else
                     {
-                        Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 100, Enemies[j]->currentvelocity.y + 100);
+                        Enemies[j]->currentvelocity = -Vector2f(Enemies[j]->currentvelocity.x + 20, Enemies[j]->currentvelocity.y + 20);
                     }
                     Enemies[j]->isEnemyhit = true;
                     SpawnBlood(*Enemies[j]);
@@ -2663,7 +2670,17 @@ void Bullet_Movement_Collision(float dt)
         }
         if (!bullets[i].IsFireBall && !bullets[i].Isturret && bullets[i].shape.getGlobalBounds().intersects(Boss.getGlobalBounds()) && BossHealth > 0)
         {
-            BossHealth -= bullets[i].damage;
+            if (bullets[i].isRocket)
+            {
+                Explosion newexplosion;
+                newexplosion.explosionlogic(bullets[i].shape.getPosition(), Player.getPosition(), Boss.getPosition(), rocketdamage, rocket_radius, isdashing);
+                explosions.push_back(newexplosion);
+                BossHealth -= bullets[i].damage * 2;
+            }
+            else
+            {
+                BossHealth -= bullets[i].damage;
+            }
             bullets[i].deleteme = true;
             break;
         }
@@ -2704,7 +2721,6 @@ void Bullet_Movement_Collision(float dt)
 }
 void Guns_Animation_Handling()
 {
-    int gun_frames = 24;
     if (Mouse::isButtonPressed(Mouse::Left) && !isreloading && *current_ammo > 0)
     {
         isshooting = true;
@@ -2718,19 +2734,19 @@ void Guns_Animation_Handling()
         {
         case Pistol:
             Pistol_S.setTexture(pistol_shoot_animations[gun_image_counter]);
-            gun_frames = 12;
+            gun_frames = 11;
             break;
         case Smg:
             SMG_S.setTexture(SMG_Shoot_Animations[gun_image_counter]);
-            gun_frames = 16;
+            gun_frames = 15;
             break;
         case Shotgun:
             ShotGun_S.setTexture(shotgun_shoot_animation[gun_image_counter]);
-            gun_frames = 14;
+            gun_frames = 13;
             break;
         case Sniper:
             Sniper_S.setTexture(sniper_shoot_animations[gun_image_counter]);
-            gun_frames = 9;
+            gun_frames = 8;
         case MiniGun:
             MiniGun_S.setTexture(MiniGun_Image);
             break;
@@ -2755,19 +2771,19 @@ void Guns_Animation_Handling()
         {
         case Pistol:
             Pistol_S.setTexture(pistol_reload_animation[gun_image_counter]);
-            gun_frames = 26;
+            gun_frames = 25;
             break;
         case Smg:
             SMG_S.setTexture(SMG_Reload_Animations[gun_image_counter]);
-            gun_frames = 16;
+            gun_frames = 15;
             break;
         case Shotgun:
             ShotGun_S.setTexture(shotgun_reload_animation[gun_image_counter]);
-            gun_frames = 14;
+            gun_frames = 13;
             break;
         case Sniper:
             Sniper_S.setTexture(sniper_reload_animation[gun_image_counter]);
-            gun_frames = 40;
+            gun_frames = 39;
             break;
         case MiniGun:
             MiniGun_S.setTexture(MiniGun_Image);
@@ -2851,7 +2867,7 @@ void SpawnZombiesWaves(float dt)
 {
     float multiplier = (Current_Wave1 / (float)Level1NumWaves) * 1.5f;
     SpawningZombieCounter += dt;
-    if (canspawn && SpawningZombieCounter >= 1)
+    if (canspawn && SpawningZombieCounter >= 0.3)
     {
         int randomthing = 1 + rand() % 10;
         if (randomthing <= 6)
@@ -2896,7 +2912,7 @@ void SpawnZombiesWaves(float dt)
         TotalSpawnedZombies++;
         SpawningZombieCounter = 0;
     }
-    if (TotalSpawnedZombies >= 25 * Current_Wave1)
+    if (TotalSpawnedZombies >= 35 * Current_Wave1)
     {
         canspawn = false;
     }
@@ -4881,6 +4897,7 @@ void StartNewGame()
     current_dialogue = 0;
     MusicPlayer.stop();
     music_trigger = false;
+    EnemiesKilledWithoutHit = 0;
 }
 
 void game_openning_menu()
